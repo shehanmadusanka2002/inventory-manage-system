@@ -1,69 +1,92 @@
 package com.inventory.warehouse.controller;
 
+import com.inventory.warehouse.dto.BranchDto;
+import com.inventory.warehouse.dto.WarehouseResponseDto;
 import com.inventory.warehouse.model.Warehouse;
-import com.inventory.warehouse.repository.WarehouseRepository;
+import com.inventory.warehouse.service.WarehouseService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/warehouses")
 @RequiredArgsConstructor
 public class WarehouseController {
-    private final WarehouseRepository warehouseRepository;
-    
+
+    private final WarehouseService warehouseService;
+
+    // ── GET /api/warehouses ────────────────────────────────────────────────────
     @GetMapping
-    public ResponseEntity<List<Warehouse>> getAllWarehouses() {
-        return ResponseEntity.ok(warehouseRepository.findAll());
+    public ResponseEntity<List<WarehouseResponseDto>> getAllWarehouses(
+            @RequestHeader(value = "X-Org-ID", required = false) Long orgId) {
+        List<WarehouseResponseDto> result = (orgId != null)
+                ? warehouseService.getWarehousesByOrg(orgId)
+                : warehouseService.getAllWarehouses();
+        return ResponseEntity.ok(result);
     }
-    
+
+    // ── GET /api/warehouses/{id} ───────────────────────────────────────────────
     @GetMapping("/{id}")
-    public ResponseEntity<Warehouse> getWarehouseById(@PathVariable Long id) {
-        return warehouseRepository.findById(id)
+    public ResponseEntity<WarehouseResponseDto> getWarehouseById(@PathVariable Long id) {
+        return warehouseService.getWarehouseById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
-    
+
+    // ── GET /api/warehouses/organization/{orgId} ───────────────────────────────
     @GetMapping("/organization/{orgId}")
-    public ResponseEntity<List<Warehouse>> getWarehousesByOrganization(@PathVariable Long orgId) {
-        return ResponseEntity.ok(warehouseRepository.findByOrgId(orgId));
+    public ResponseEntity<List<WarehouseResponseDto>> getWarehousesByOrganization(
+            @PathVariable Long orgId) {
+        return ResponseEntity.ok(warehouseService.getWarehousesByOrg(orgId));
     }
-    
+
+    // ── GET /api/warehouses/branch/{branchId} ─────────────────────────────────
     @GetMapping("/branch/{branchId}")
-    public ResponseEntity<List<Warehouse>> getWarehousesByBranch(@PathVariable Long branchId) {
-        return ResponseEntity.ok(warehouseRepository.findByBranchId(branchId));
+    public ResponseEntity<List<WarehouseResponseDto>> getWarehousesByBranch(
+            @PathVariable Long branchId) {
+        return ResponseEntity.ok(warehouseService.getWarehousesByBranch(branchId));
     }
-    
+
+    /**
+     * GET /api/warehouses/branches?orgId={orgId}
+     *
+     * Proxies the user-service to return the list of branches for a given org.
+     * Used by the frontend to populate the "Branch" dropdown when creating a
+     * warehouse.
+     */
+    @GetMapping("/branches")
+    public ResponseEntity<List<BranchDto>> getBranchesForOrg(
+            @RequestParam Long orgId) {
+        return ResponseEntity.ok(warehouseService.getBranchesByOrgId(orgId));
+    }
+
+    // ── POST /api/warehouses ───────────────────────────────────────────────────
     @PostMapping
-    public ResponseEntity<Warehouse> createWarehouse(@RequestBody Warehouse warehouse) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(warehouseRepository.save(warehouse));
+    public ResponseEntity<WarehouseResponseDto> createWarehouse(
+            @RequestBody Warehouse warehouse) {
+        WarehouseResponseDto created = warehouseService.createWarehouse(warehouse);
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
-    
+
+    // ── PUT /api/warehouses/{id} ───────────────────────────────────────────────
     @PutMapping("/{id}")
-    public ResponseEntity<Warehouse> updateWarehouse(@PathVariable Long id, @RequestBody Warehouse warehouse) {
-        return warehouseRepository.findById(id)
-                .map(existing -> {
-                    existing.setName(warehouse.getName());
-                    existing.setLocation(warehouse.getLocation());
-                    existing.setBranchId(warehouse.getBranchId());
-                    existing.setWarehouseType(warehouse.getWarehouseType());
-                    existing.setStorageCapacity(warehouse.getStorageCapacity());
-                    existing.setIsActive(warehouse.getIsActive());
-                    return ResponseEntity.ok(warehouseRepository.save(existing));
-                })
+    public ResponseEntity<WarehouseResponseDto> updateWarehouse(
+            @PathVariable Long id,
+            @RequestBody Warehouse warehouse) {
+        return warehouseService.updateWarehouse(id, warehouse)
+                .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
-    
+
+    // ── DELETE /api/warehouses/{id} ────────────────────────────────────────────
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteWarehouse(@PathVariable Long id) {
-        return warehouseRepository.findById(id)
-                .map(warehouse -> {
-                    warehouse.setIsActive(false);
-                    warehouseRepository.save(warehouse);
-                    return ResponseEntity.noContent().<Void>build();
-                })
-                .orElse(ResponseEntity.notFound().build());
+        boolean deactivated = warehouseService.deactivateWarehouse(id);
+        return deactivated
+                ? ResponseEntity.noContent().build()
+                : ResponseEntity.notFound().build();
     }
 }

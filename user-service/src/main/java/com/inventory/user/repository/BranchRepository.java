@@ -8,6 +8,6 @@ import java.util.List;
 @Repository
 public interface BranchRepository extends JpaRepository<Branch, Long> {
     List<Branch> findByOrgId(Long orgId);
+
     List<Branch> findByOrgIdAndIsActiveTrue(Long orgId);
-    List<Branch> findByOrgIdAndIndustryType(Long orgId, String industryType);
 }

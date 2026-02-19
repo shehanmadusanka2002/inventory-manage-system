@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { productService, pharmacyService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { FaBox, FaExclamationTriangle, FaBan, FaPills, FaSnowflake } from 'react-icons/fa';
+import { Edit, Trash2, Box, Activity, AlertTriangle, FileText, Anchor } from 'lucide-react';
+import './Products.css';
 
 function Products() {
   const navigate = useNavigate();
@@ -35,7 +37,7 @@ function Products() {
 
   const fetchPharmacyProducts = async () => {
     if (!isPharmacy) return;
-    
+
     try {
       let response;
       const orgId = user?.orgId || 1;
@@ -110,274 +112,238 @@ function Products() {
   if (loading) return <div className="loading">Loading...</div>;
 
   return (
-    <div>
+    <div className="products-container">
       <div className="page-header">
-        <h1><FaBox /> Products {isPharmacy && '& Pharmacy Management'}</h1>
-        {isPharmacy && <p>Batch tracking, expiry dates, and prescription management</p>}
-      </div>
-
-      <div className="action-buttons">
-        <button className="btn btn-primary" onClick={() => navigate('/products/register')}>
-          Register Product with Stock
-        </button>
-        {isPharmacy && (
+        <div>
+          <h1><FaBox className="text-gray-400 mr-2" /> Products {isPharmacy && '& Pharmacy Management'}</h1>
+          {isPharmacy && <p>Batch tracking, expiry dates, and prescription management</p>}
+        </div>
+        <div className="action-buttons">
           <button className="btn btn-secondary" onClick={handleUpdateExpiry}>
-            Update Expiry Statuses
+            Update Statuses
           </button>
-        )}
+          <button className="btn btn-primary" onClick={() => navigate('/products/register')}>
+            + Register Product
+          </button>
+        </div>
       </div>
 
-      {/* Pharmacy Stats Cards */}
+      {/* Stats Cards */}
       {isPharmacy && (
-        <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', margin: '1rem 0' }}>
-          <div className="stat-card" onClick={() => setActiveTab('expiring')} style={{ cursor: 'pointer' }}>
-            <div className="stat-info">
-              <h3><FaExclamationTriangle /> Expiring Soon</h3>
-              <p style={{ fontSize: '2rem', fontWeight: 'bold' }}>
-                {pharmacyProducts.filter(p => p.daysUntilExpiry <= 30 && !p.isExpired).length}
-              </p>
+        <div className="stats-grid">
+          <div className="stat-card" onClick={() => setActiveTab('expiring')}>
+            <div className="stat-header">
+              <FaExclamationTriangle /> <span>Expiring Soon</span>
+            </div>
+            <div className="stat-value text-yellow-600">
+              {pharmacyProducts.filter(p => p.daysUntilExpiry <= 30 && !p.isExpired).length}
             </div>
           </div>
-          <div className="stat-card" onClick={() => setActiveTab('expired')} style={{ cursor: 'pointer' }}>
-            <div className="stat-info">
-              <h3><FaBan /> Expired</h3>
-              <p style={{ fontSize: '2rem', fontWeight: 'bold', color: '#ef4444' }}>
-                {pharmacyProducts.filter(p => p.isExpired).length}
-              </p>
+          <div className="stat-card" onClick={() => setActiveTab('expired')}>
+            <div className="stat-header">
+              <FaBan /> <span>Expired</span>
+            </div>
+            <div className="stat-value text-red-600">
+              {pharmacyProducts.filter(p => p.isExpired).length}
             </div>
           </div>
-          <div className="stat-card" onClick={() => setActiveTab('prescription')} style={{ cursor: 'pointer' }}>
-            <div className="stat-info">
-              <h3><FaPills /> Prescription</h3>
-              <p style={{ fontSize: '2rem', fontWeight: 'bold' }}>
-                {pharmacyProducts.filter(p => p.isPrescriptionRequired).length}
-              </p>
+          <div className="stat-card" onClick={() => setActiveTab('prescription')}>
+            <div className="stat-header">
+              <FaPills /> <span>Prescription</span>
+            </div>
+            <div className="stat-value text-blue-600">
+              {pharmacyProducts.filter(p => p.isPrescriptionRequired).length}
             </div>
           </div>
-          <div className="stat-card" onClick={() => setActiveTab('refrigerated')} style={{ cursor: 'pointer' }}>
-            <div className="stat-info">
-              <h3><FaSnowflake /> Refrigerated</h3>
-              <p style={{ fontSize: '2rem', fontWeight: 'bold' }}>
-                {pharmacyProducts.filter(p => p.requiresRefrigeration).length}
-              </p>
+          <div className="stat-card" onClick={() => setActiveTab('refrigerated')}>
+            <div className="stat-header">
+              <FaSnowflake /> <span>Refrigerated</span>
+            </div>
+            <div className="stat-value text-cyan-600">
+              {pharmacyProducts.filter(p => p.requiresRefrigeration).length}
             </div>
           </div>
         </div>
       )}
 
-      {/* Pharmacy Tabs */}
+      {/* Filter Tabs */}
       {isPharmacy && (
-        <>
-          <div className="tabs">
-            <button 
-              className={activeTab === 'all' ? 'active' : ''}
-              onClick={() => setActiveTab('all')}
+        <div className="tabs-container">
+          {[
+            { id: 'all', label: 'All Products' },
+            { id: 'expiring', label: 'Expiring Soon' },
+            { id: 'expired', label: 'Expired' },
+            { id: 'prescription', label: 'Prescription Only' },
+            { id: 'controlled', label: 'Controlled' },
+            { id: 'recalled', label: 'Recalled' }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              className={`tab-pill ${activeTab === tab.id ? 'active' : 'inactive'}`}
+              onClick={() => setActiveTab(tab.id)}
             >
-              All Products
+              {tab.label}
             </button>
-            <button 
-              className={activeTab === 'expiring' ? 'active' : ''}
-              onClick={() => setActiveTab('expiring')}
-            >
-              Expiring Soon
-            </button>
-            <button 
-              className={activeTab === 'expired' ? 'active' : ''}
-              onClick={() => setActiveTab('expired')}
-            >
-              Expired
-            </button>
-            <button 
-              className={activeTab === 'prescription' ? 'active' : ''}
-              onClick={() => setActiveTab('prescription')}
-            >
-              Prescription Only
-            </button>
-            <button 
-              className={activeTab === 'controlled' ? 'active' : ''}
-              onClick={() => setActiveTab('controlled')}
-            >
-              Controlled
-            </button>
-            <button 
-              className={activeTab === 'recalled' ? 'active' : ''}
-              onClick={() => setActiveTab('recalled')}
-            >
-              Recalled
-            </button>
-          </div>
-
-          {activeTab === 'expiring' && (
-            <div style={{ margin: '1rem 0' }}>
-              <label>Show items expiring within: </label>
-              <select value={expiringDays} onChange={(e) => setExpiringDays(e.target.value)}>
-                <option value="7">7 days</option>
-                <option value="30">30 days</option>
-                <option value="60">60 days</option>
-                <option value="90">90 days</option>
-              </select>
-            </div>
-          )}
-        </>
+          ))}
+        </div>
       )}
 
-      <div className="card">
-        <div className="table-container">
-          {isPharmacy && activeTab !== 'all' ? (
-            /* Pharmacy-specific table */
-            <table>
-              <thead>
-                <tr>
-                  <th>Product</th>
-                  <th>Batch#</th>
-                  <th>Ingredient</th>
-                  <th>Strength</th>
-                  <th>Expiry Date</th>
-                  <th>Days Until Expiry</th>
-                  <th>Type</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pharmacyProducts.length === 0 ? (
-                  <tr>
-                    <td colSpan="9" style={{ textAlign: 'center', padding: '2rem' }}>
-                      No pharmacy products found
-                    </td>
-                  </tr>
-                ) : (
-                  pharmacyProducts.map((product) => (
-                    <tr key={product.id} style={product.isExpired ? { backgroundColor: '#fee2e2' } : product.daysUntilExpiry <= 30 ? { backgroundColor: '#fef3c7' } : {}}>
-                      <td>{getProductName(product.productId)}</td>
-                      <td>{product.batchNumber}</td>
-                      <td>{product.activeIngredient}</td>
-                      <td>{product.strength}</td>
-                      <td>{product.expiryDate}</td>
-                      <td>
-                        <span style={{ 
-                          color: product.isExpired ? '#ef4444' : product.daysUntilExpiry <= 30 ? '#f59e0b' : '#10b981'
-                        }}>
-                          {product.daysUntilExpiry} days
-                        </span>
-                      </td>
-                      <td>
-                        {product.isPrescriptionRequired && (
-                          <span className="badge" style={{ backgroundColor: '#3b82f6' }}>
-                            {product.prescriptionType}
-                          </span>
-                        )}
-                        {product.requiresRefrigeration && (
-                          <span className="badge" style={{ backgroundColor: '#06b6d4', marginLeft: '0.5rem' }}>
-                            <FaSnowflake /> Cold
-                          </span>
-                        )}
-                      </td>
-                      <td>
-                        {product.isRecalled ? (
-                          <span className="badge" style={{ backgroundColor: '#ef4444' }}>RECALLED</span>
-                        ) : product.isExpired ? (
-                          <span className="badge" style={{ backgroundColor: '#ef4444' }}>EXPIRED</span>
-                        ) : (
-                          <span className="badge" style={{ backgroundColor: '#10b981' }}>Active</span>
-                        )}
-                      </td>
-                      <td>
-                        <button 
-                          className="btn btn-danger btn-sm" 
-                          onClick={() => handleRecall(product.id)}
-                          disabled={product.isRecalled}
-                        >
-                          Recall
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          ) : (
-            /* Standard products table */
-            <table>
-            <thead>
+      {/* Filter Controls (Expiring) */}
+      {activeTab === 'expiring' && (
+        <div className="filter-options">
+          <label className="text-sm font-medium text-gray-700">Show items expiring within:</label>
+          <select
+            className="filter-select"
+            value={expiringDays}
+            onChange={(e) => setExpiringDays(e.target.value)}
+          >
+            <option value="7">7 days</option>
+            <option value="30">30 days</option>
+            <option value="60">60 days</option>
+            <option value="90">90 days</option>
+          </select>
+        </div>
+      )}
+
+      {/* Table */}
+      <div className="table-card">
+        <table className="modern-table">
+          <thead>
+            {isPharmacy && activeTab !== 'all' ? (
+              <tr>
+                <th>Product</th>
+                <th>Batch#</th>
+                <th>Ingredient</th>
+                <th>Strength</th>
+                <th>Expiry</th>
+                <th>Status</th>
+                <th>Attributes</th>
+                <th>Actions</th>
+              </tr>
+            ) : (
               <tr>
                 <th>SKU</th>
                 <th>Product Name</th>
-                {isPharmacy && <th>Generic Name</th>}
+                {isPharmacy && <th>Generic</th>}
                 <th>Category</th>
                 <th>Brand</th>
-                <th>Unit</th>
-                <th>Selling Price</th>
-                {isPharmacy && <th>Prescription</th>}
-                <th>Reorder Level</th>
+                <th>Price</th>
+                <th>Stock Config</th>
                 <th>Status</th>
-                <th>Actions</th>
+                <th style={{ textAlign: 'right' }}>Actions</th>
               </tr>
-            </thead>
-            <tbody>
-              {products.length === 0 ? (
-                <tr>
-                  <td colSpan={isPharmacy ? "11" : "9"} style={{ textAlign: 'center', padding: '2rem' }}>
-                    No products found
-                  </td>
-                </tr>
-              ) : (
-                products.map((product) => {
-                  const genericName = product.industrySpecificAttributes?.genericName || '-';
-                  const isPrescription = product.industrySpecificAttributes?.isPrescriptionRequired || false;
-                  
+            )}
+          </thead>
+          <tbody>
+            {(isPharmacy && activeTab !== 'all' ? pharmacyProducts : products).length === 0 ? (
+              <tr>
+                <td colSpan="10" className="empty-state">
+                  No products found matching relevant criteria.
+                </td>
+              </tr>
+            ) : (
+              (isPharmacy && activeTab !== 'all' ? pharmacyProducts : products).map((product) => {
+                // Determine render logic based on listing type
+                if (isPharmacy && activeTab !== 'all') {
+                  // Pharmacy Row
                   return (
                     <tr key={product.id}>
-                      <td><strong>{product.sku}</strong></td>
-                      <td>{product.name}</td>
-                      {isPharmacy && <td style={{ color: '#6b7280' }}>{genericName}</td>}
-                      <td>{product.category || '-'}</td>
-                      <td>{product.brand || '-'}</td>
+                      <td className="font-medium text-gray-900">{getProductName(product.productId)}</td>
+                      <td className="text-gray-500">{product.batchNumber}</td>
+                      <td>{product.activeIngredient}</td>
+                      <td>{product.strength}</td>
                       <td>
-                        <span className="badge" style={{ backgroundColor: '#6b7280' }}>
-                          {product.unit || 'UNIT'}
-                        </span>
-                      </td>
-                      <td style={{ fontWeight: 'bold', color: '#059669' }}>${product.price?.toFixed(2) || '0.00'}</td>
-                      {isPharmacy && (
-                        <td>
-                          {isPrescription ? (
-                            <span className="badge" style={{ backgroundColor: '#dc2626' }}>
-                              <FaPills /> Required
-                            </span>
-                          ) : (
-                            <span className="badge" style={{ backgroundColor: '#10b981' }}>OTC</span>
-                          )}
-                        </td>
-                      )}
-                      <td>
-                        <span style={{ 
-                          color: product.reorderLevel <= 10 ? '#ef4444' : '#6b7280',
-                          fontWeight: product.reorderLevel <= 10 ? 'bold' : 'normal'
-                        }}>
-                          {product.reorderLevel || 10}
-                        </span>
+                        <div className="flex flex-col">
+                          <span>{product.expiryDate}</span>
+                          <span className="text-xs text-gray-500">{product.daysUntilExpiry} days left</span>
+                        </div>
                       </td>
                       <td>
-                        {product.isActive ? (
-                          <span className="badge" style={{ backgroundColor: '#10b981' }}>Active</span>
+                        {product.isRecalled ? (
+                          <span className="badge-soft badge-red">RECALLED</span>
+                        ) : product.isExpired ? (
+                          <span className="badge-soft badge-red">EXPIRED</span>
+                        ) : product.daysUntilExpiry <= 30 ? (
+                          <span className="badge-soft badge-yellow">Expiring Soon</span>
                         ) : (
-                          <span className="badge" style={{ backgroundColor: '#ef4444' }}>Inactive</span>
+                          <span className="badge-soft badge-green">Good</span>
                         )}
                       </td>
                       <td>
-                        <button className="btn btn-danger btn-sm" onClick={() => handleDelete(product.id)}>
-                          Delete
+                        <div className="flex gap-1 flex-wrap">
+                          {product.isPrescriptionRequired && (
+                            <span className="badge-soft badge-blue">{product.prescriptionType}</span>
+                          )}
+                          {product.requiresRefrigeration && (
+                            <span className="badge-soft badge-cyan">Cold Chain</span>
+                          )}
+                        </div>
+                      </td>
+                      <td>
+                        <button
+                          className="action-icon-btn action-delete"
+                          title="Recall Product"
+                          onClick={() => handleRecall(product.id)}
+                          disabled={product.isRecalled}
+                        >
+                          <AlertTriangle size={16} />
                         </button>
                       </td>
                     </tr>
                   );
-                })
-              )}
-            </tbody>
-          </table>
-          )}
-        </div>
+                } else {
+                  // Standard Row
+                  const genericName = product.industrySpecificAttributes?.genericName || '-';
+                  const isPrescription = product.industrySpecificAttributes?.isPrescriptionRequired || false;
+                  const unit = product.unit || 'UNIT';
+
+                  return (
+                    <tr key={product.id}>
+                      <td className="text-gray-500 text-xs font-mono">{product.sku}</td>
+                      <td className="font-medium text-gray-900">{product.name}</td>
+                      {isPharmacy && <td className="text-gray-500 italic">{genericName}</td>}
+                      <td><span className="badge-soft badge-gray">{product.category || '-'}</span></td>
+                      <td>{product.brand || '-'}</td>
+                      <td className="font-bold text-gray-700">${product.price?.toFixed(2)}</td>
+                      <td>
+                        <div className="flex flex-col text-xs text-gray-500">
+                          <span>Unit: {unit}</span>
+                          <span className={product.reorderLevel <= 10 ? 'text-red-600 font-bold' : ''}>
+                            Reorder: {product.reorderLevel || 'Not Set'}
+                          </span>
+                        </div>
+                      </td>
+                      <td>
+                        <div className="flex items-center gap-2">
+                          {product.isActive ? (
+                            <span className="badge-soft badge-green">Active</span>
+                          ) : (
+                            <span className="badge-soft badge-red">Inactive</span>
+                          )}
+                          {isPrescription && <span className="badge-soft badge-red">Rx</span>}
+                        </div>
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        <div className="flex justify-end gap-2">
+                          <button className="action-icon-btn action-edit" title="Edit">
+                            <Edit size={16} />
+                          </button>
+                          <button
+                            className="action-icon-btn action-delete"
+                            title="Delete"
+                            onClick={() => handleDelete(product.id)}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                }
+              })
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );

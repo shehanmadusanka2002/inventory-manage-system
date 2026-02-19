@@ -13,58 +13,67 @@ import java.util.List;
 @RequestMapping("/api/inventory")
 @RequiredArgsConstructor
 public class InventoryController {
-    
+
     private final InventoryService inventoryService;
-    
+
     @GetMapping("/stocks")
-    public ResponseEntity<List<Stock>> getAllStocks() {
-        return ResponseEntity.ok(inventoryService.getAllStocks());
+    public ResponseEntity<List<com.inventory.inventoryservice.dto.StockResponseDto>> getAllStocks(
+            @RequestHeader(value = "X-Org-ID", required = false) Long orgId) {
+        List<com.inventory.inventoryservice.dto.StockResponseDto> stocks = (orgId != null)
+                ? inventoryService.getStocksByOrgWithDetails(orgId)
+                : inventoryService.getAllStocksWithDetails();
+        return ResponseEntity.ok(stocks);
     }
-    
+
     @GetMapping("/stocks/{id}")
-    public ResponseEntity<Stock> getStockById(@PathVariable Long id) {
-        return inventoryService.getStockById(id)
+    public ResponseEntity<com.inventory.inventoryservice.dto.StockResponseDto> getStockById(@PathVariable Long id) {
+        return inventoryService.getStockByIdWithDetails(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
-    
+
     @GetMapping("/stocks/product/{productId}")
-    public ResponseEntity<List<Stock>> getStocksByProduct(@PathVariable Long productId) {
-        return ResponseEntity.ok(inventoryService.getStocksByProduct(productId));
+    public ResponseEntity<List<com.inventory.inventoryservice.dto.StockResponseDto>> getStocksByProduct(
+            @PathVariable Long productId) {
+        return ResponseEntity.ok(inventoryService.getStocksByProductWithDetails(productId));
     }
-    
+
     @GetMapping("/stocks/product/{productId}/warehouse/{warehouseId}")
-    public ResponseEntity<Stock> getStockByProductAndWarehouse(
-            @PathVariable Long productId, 
+    public ResponseEntity<com.inventory.inventoryservice.dto.StockResponseDto> getStockByProductAndWarehouse(
+            @PathVariable Long productId,
             @PathVariable Long warehouseId) {
-        return inventoryService.getStockByProductAndWarehouse(productId, warehouseId)
+        return inventoryService.getStockByProductAndWarehouseWithDetails(productId, warehouseId)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
-    
+
     @PostMapping("/stocks")
     public ResponseEntity<Stock> createStock(@RequestBody Stock stock) {
         Stock createdStock = inventoryService.createStock(stock);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdStock);
     }
-    
+
     @PutMapping("/stocks/{id}")
     public ResponseEntity<Stock> updateStock(@PathVariable Long id, @RequestBody Stock stock) {
         stock.setId(id);
         return ResponseEntity.ok(inventoryService.updateStock(stock));
     }
-    
+
     @GetMapping("/transactions")
-    public ResponseEntity<List<InventoryTransaction>> getAllTransactions() {
-        return ResponseEntity.ok(inventoryService.getAllTransactions());
+    public ResponseEntity<List<InventoryTransaction>> getAllTransactions(
+            @RequestHeader(value = "X-Org-ID", required = false) Long orgId) {
+        List<InventoryTransaction> txns = (orgId != null)
+                ? inventoryService.getTransactionsByOrg(orgId)
+                : inventoryService.getAllTransactions();
+        return ResponseEntity.ok(txns);
     }
-    
+
     @PostMapping("/transactions")
     public ResponseEntity<InventoryTransaction> createTransaction(@RequestBody InventoryTransaction transaction) {
         InventoryTransaction createdTransaction = inventoryService.createTransaction(transaction);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdTransaction);
     }
-    
+
     @GetMapping("/transactions/product/{productId}")
     public ResponseEntity<List<InventoryTransaction>> getTransactionsByProduct(@PathVariable Long productId) {
         return ResponseEntity.ok(inventoryService.getTransactionsByProduct(productId));

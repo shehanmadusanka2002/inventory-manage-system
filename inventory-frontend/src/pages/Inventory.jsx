@@ -24,10 +24,17 @@ function TypeBadge({ type }) {
 
 function StockLevelBar({ quantity, reorderLevel }) {
   if (!reorderLevel || reorderLevel === 0) return <span className="inv-qty">{quantity ?? 0}</span>;
-  const pct = Math.min(100, Math.round((quantity / (reorderLevel * 3)) * 100));
+
+  // Scale: Reorder Level is at 50% mark. Full bar = 2x Reorder Level.
+  // This provides a meaningful visual: Halfway = Time to Reorder.
+  const maxScale = reorderLevel * 2;
+  const pct = Math.min(100, Math.round((quantity / maxScale) * 100));
+
+  // Color Logic: Red if empty, Orange if at/below reorder, Green if healthy
   const color = quantity <= 0 ? '#ef4444' : quantity <= reorderLevel ? '#f59e0b' : '#22c55e';
+
   return (
-    <div className="inv-stock-bar-wrap">
+    <div className="inv-stock-bar-wrap" title={`Stock: ${quantity} / Reorder Level: ${reorderLevel}`}>
       <span className="inv-qty" style={{ color }}>{quantity ?? 0}</span>
       <div className="inv-stock-bar">
         <div className="inv-stock-bar-fill" style={{ width: `${pct}%`, background: color }} />
@@ -253,11 +260,15 @@ function Inventory() {
                   {filteredStocks.map((stock, idx) => {
                     const isLow = stock.reorderLevel && stock.quantity <= stock.reorderLevel && stock.quantity > 0;
                     const isOut = (stock.quantity || 0) <= 0;
-                    const status = isOut ? 'out' : isLow ? 'low' : 'ok';
+                    const isUnconfigured = stock.reorderLevel === null || stock.reorderLevel === undefined;
+
+                    const status = isOut ? 'out' : isLow ? 'low' : isUnconfigured ? 'unconfigured' : 'ok';
+
                     const statusMeta = {
                       ok: { label: 'In Stock', color: '#4ade80', bg: 'rgba(34,197,94,0.12)' },
                       low: { label: 'Low Stock', color: '#fbbf24', bg: 'rgba(245,158,11,0.12)' },
                       out: { label: 'Out of Stock', color: '#f87171', bg: 'rgba(239,68,68,0.12)' },
+                      unconfigured: { label: 'No Reorder Level', color: '#94a3b8', bg: '#f1f5f9' },
                     }[status];
 
                     return (
@@ -270,7 +281,7 @@ function Inventory() {
                         </td>
                         <td className="inv-qty">{stock.availableQuantity ?? 0}</td>
                         <td className="inv-qty inv-reserved">{stock.reservedQuantity ?? 0}</td>
-                        <td className="inv-qty">{stock.reorderLevel ?? '—'}</td>
+                        <td className="inv-qty">{stock.reorderLevel ?? <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Not Set</span>}</td>
                         <td>
                           <span className="inv-status-badge" style={{ color: statusMeta.color, background: statusMeta.bg }}>
                             {statusMeta.label}

@@ -127,9 +127,11 @@ function CreatePurchaseOrderModal({ suppliers, onClose, onCreated }) {
     }
     setSubmitting(true); setError('');
     try {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
       const payload = {
         supplierId: Number(form.supplierId),
         warehouseId: Number(form.warehouseId),
+        orgId: user.orgId ? Number(user.orgId) : null,
         notes: form.notes.trim() || null,
         items: form.items.map(it => ({
           productId: Number(it.productId),
@@ -352,9 +354,11 @@ function CreateSalesOrderModal({ onClose, onCreated }) {
     }
     setSubmitting(true); setError('');
     try {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
       const payload = {
         customerName: form.customerName.trim(),
         warehouseId: Number(form.warehouseId),
+        orgId: user.orgId ? Number(user.orgId) : null,
         notes: form.notes.trim() || null,
         totalAmount: computedTotal,
         items: form.items.map(it => ({

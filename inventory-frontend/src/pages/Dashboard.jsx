@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { FaBox, FaWarehouse, FaShoppingCart, FaChartLine, FaExclamationTriangle, FaDollarSign } from 'react-icons/fa';
+import { ArrowDownCircle, ArrowUpCircle, RefreshCw, ArrowLeftRight, SlidersHorizontal, RotateCcw } from 'lucide-react';
 import { analyticsService, productService, warehouseService, orderService, inventoryService } from '../services/api';
 
 function Dashboard() {
@@ -15,6 +16,7 @@ function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [recentActivity, setRecentActivity] = useState([]);
+  const [productMap, setProductMap] = useState({});
 
   useEffect(() => {
     fetchStats();
@@ -87,9 +89,18 @@ function Dashboard() {
         ? stocks.value.data.reduce((sum, stock) => sum + (stock.quantity || 0), 0)
         : 0;
 
-      // Get recent transactions for activity feed
+      // Build productId → name map
+      const pMap = {};
+      if (products.status === 'fulfilled') {
+        products.value.data.forEach(p => { pMap[p.id] = p.name || p.productName || `Product #${p.id}`; });
+      }
+      setProductMap(pMap);
+
+      // Get recent transactions — sort newest first, take top 8
       const recentTransactions = transactions.status === 'fulfilled'
-        ? transactions.value.data.slice(0, 5)
+        ? [...transactions.value.data]
+          .sort((a, b) => new Date(b.createdAt || b.transactionDate) - new Date(a.createdAt || a.transactionDate))
+          .slice(0, 8)
         : [];
 
       // Calculate low stock alerts directly from stock data
@@ -141,26 +152,48 @@ function Dashboard() {
     }).format(value);
   };
 
+  // Format: "Feb 18, 09:45 PM"
   const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
+    if (!dateString) return '—';
     const date = new Date(dateString);
+    if (isNaN(date)) return '—';
     return date.toLocaleString('en-US', {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      hour12: true
     });
   };
 
-  const getTransactionTypeLabel = (type) => {
-    const labels = {
-      'STOCK_IN': 'Stock In',
-      'STOCK_OUT': 'Stock Out',
-      'ADJUSTMENT': 'Adjustment',
-      'TRANSFER': 'Transfer',
-      'RETURN': 'Return'
-    };
-    return labels[type] || type;
+  // Lucide icon + color per transaction type
+  const getTypeMeta = (type) => {
+    switch (type) {
+      case 'IN': return { Icon: ArrowDownCircle, color: '#16a34a', bg: '#dcfce7', label: 'Stock In' };
+      case 'OUT': return { Icon: ArrowUpCircle, color: '#dc2626', bg: '#fee2e2', label: 'Stock Out' };
+      case 'TRANSFER': return { Icon: ArrowLeftRight, color: '#7c3aed', bg: '#ede9fe', label: 'Transfer' };
+      case 'ADJUSTMENT': return { Icon: SlidersHorizontal, color: '#d97706', bg: '#fef3c7', label: 'Adjustment' };
+      case 'RETURN': return { Icon: RotateCcw, color: '#0284c7', bg: '#e0f2fe', label: 'Return' };
+      default: return { Icon: RefreshCw, color: '#6b7280', bg: '#f3f4f6', label: type || '—' };
+    }
+  };
+
+  // Signed quantity: +10 for IN/ADJUSTMENT/RETURN, -10 for OUT/TRANSFER
+  const formatQty = (type, qty) => {
+    if (!qty && qty !== 0) return '—';
+    const isPositive = ['IN', 'ADJUSTMENT', 'RETURN'].includes(type);
+    return (isPositive ? '+' : '-') + Math.abs(qty);
+  };
+
+  // Smart notes from referenceId + type
+  const buildNotes = (txn) => {
+    const ref = txn.referenceId;
+    const raw = txn.notes;
+    if (raw && raw.trim()) return raw;
+    if (!ref) return '—';
+    if (ref.startsWith('SO-')) return `Sales order fulfillment — #${ref}`;
+    if (ref.startsWith('PO-')) return `Purchase received — #${ref}`;
+    return `Ref: ${ref}`;
   };
 
   if (loading) {
@@ -283,41 +316,82 @@ function Dashboard() {
         </div>
 
         {recentActivity.length === 0 ? (
-          <p style={{ color: '#6b7280' }}>No recent activity to display.</p>
+          <div style={{ textAlign: 'center', padding: '2.5rem 1rem', color: '#9ca3af' }}>
+            <RefreshCw size={32} style={{ marginBottom: '0.5rem', opacity: 0.4 }} />
+            <p style={{ margin: 0, fontSize: '14px' }}>No recent transactions to display.</p>
+          </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13.5px' }}>
               <thead>
-                <tr style={{ borderBottom: '2px solid #e5e7eb', textAlign: 'left' }}>
-                  <th style={{ padding: '0.75rem', fontWeight: '600' }}>Type</th>
-                  <th style={{ padding: '0.75rem', fontWeight: '600' }}>Product</th>
-                  <th style={{ padding: '0.75rem', fontWeight: '600' }}>Quantity</th>
-                  <th style={{ padding: '0.75rem', fontWeight: '600' }}>Date</th>
-                  <th style={{ padding: '0.75rem', fontWeight: '600' }}>Notes</th>
+                <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
+                  {['Type', 'Product', 'Qty', 'Date', 'Notes'].map(h => (
+                    <th key={h} style={{
+                      padding: '10px 14px', fontSize: '11px', fontWeight: 700,
+                      color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em'
+                    }}>{h}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {recentActivity.map((activity, index) => (
-                  <tr key={activity.id || index} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                    <td style={{ padding: '0.75rem' }}>
-                      <span style={{
-                        padding: '0.25rem 0.5rem',
-                        borderRadius: '0.25rem',
-                        fontSize: '0.875rem',
-                        backgroundColor: activity.transactionType === 'STOCK_IN' ? '#dcfce7' : '#fee2e2',
-                        color: activity.transactionType === 'STOCK_IN' ? '#166534' : '#991b1b'
+                {recentActivity.map((txn, idx) => {
+                  const { Icon, color, bg, label } = getTypeMeta(txn.type);
+                  const productName = productMap[txn.productId] || txn.productName || `Product #${txn.productId}`;
+                  const qty = formatQty(txn.type, txn.quantity);
+                  const isPositive = qty.startsWith('+');
+                  const dateStr = formatDate(txn.createdAt || txn.transactionDate);
+                  const notes = buildNotes(txn);
+
+                  return (
+                    <tr key={txn.id ?? idx} style={{
+                      borderBottom: '1px solid #f1f5f9',
+                      transition: 'background 0.15s'
+                    }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#fafafa'}
+                      onMouseLeave={e => e.currentTarget.style.background = ''}
+                    >
+                      {/* Type */}
+                      <td style={{ padding: '12px 14px' }}>
+                        <span style={{
+                          display: 'inline-flex', alignItems: 'center', gap: '5px',
+                          background: bg, color, fontWeight: 700, fontSize: '11.5px',
+                          padding: '3px 9px', borderRadius: '20px', whiteSpace: 'nowrap'
+                        }}>
+                          <Icon size={13} strokeWidth={2.5} />
+                          {label}
+                        </span>
+                      </td>
+
+                      {/* Product */}
+                      <td style={{ padding: '12px 14px', fontWeight: 600, color: '#1e293b' }}>
+                        {productName}
+                      </td>
+
+                      {/* Qty */}
+                      <td style={{
+                        padding: '12px 14px', fontWeight: 700,
+                        color: isPositive ? '#16a34a' : '#dc2626',
+                        fontVariantNumeric: 'tabular-nums'
                       }}>
-                        {getTransactionTypeLabel(activity.transactionType)}
-                      </span>
-                    </td>
-                    <td style={{ padding: '0.75rem' }}>{activity.productName || `Product #${activity.productId}`}</td>
-                    <td style={{ padding: '0.75rem', fontWeight: '500' }}>{activity.quantity}</td>
-                    <td style={{ padding: '0.75rem', color: '#6b7280' }}>{formatDate(activity.transactionDate)}</td>
-                    <td style={{ padding: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
-                      {activity.notes || '-'}
-                    </td>
-                  </tr>
-                ))}
+                        {qty}
+                      </td>
+
+                      {/* Date */}
+                      <td style={{ padding: '12px 14px', color: '#64748b', whiteSpace: 'nowrap' }}>
+                        {dateStr}
+                      </td>
+
+                      {/* Notes */}
+                      <td style={{
+                        padding: '12px 14px', color: '#94a3b8',
+                        fontSize: '12.5px', maxWidth: '260px',
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                      }} title={notes}>
+                        {notes}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

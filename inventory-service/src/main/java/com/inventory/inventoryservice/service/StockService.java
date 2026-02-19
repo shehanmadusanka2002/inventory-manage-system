@@ -19,6 +19,8 @@ public class StockService {
 
     private final StockRepository stockRepository;
     private final InventoryTransactionRepository inventoryTransactionRepository;
+    private final org.springframework.web.client.RestTemplate restTemplate;
+    private final com.inventory.inventoryservice.event.StockEventPublisher stockEventPublisher;
 
     /**
      * Process stock movement for a given product and warehouse.
@@ -48,6 +50,11 @@ public class StockService {
         Stock stock = stockRepository.findByProductIdAndWarehouseId(productId, warehouseId)
                 .orElse(null);
 
+        // Auto-fix: Ensure reorder level is set for any interaction with existing stock
+        if (stock != null && stock.getReorderLevel() == null) {
+            stock.setReorderLevel(10);
+        }
+
         // Integer representation of quantity for the current Stock entity definition
         int quantityInt = quantity.intValue();
 
@@ -70,6 +77,11 @@ public class StockService {
                     stock.setBranchId(warehouseId);
                 }
 
+                // Auto-fix: If reorder level is missing on existing stock, set it to default
+                if (stock.getReorderLevel() == null) {
+                    stock.setReorderLevel(10);
+                }
+
                 stock.setQuantity(stock.getQuantity() + quantityInt);
                 stock.setAvailableQuantity(stock.getAvailableQuantity() + quantityInt);
                 stockRepository.save(stock);
@@ -89,6 +101,9 @@ public class StockService {
                 stock.setQuantity(stock.getQuantity() - quantityInt);
                 stock.setAvailableQuantity(stock.getAvailableQuantity() - quantityInt);
                 stockRepository.save(stock);
+
+                // Check for Low Stock after deduction
+                checkLowStock(stock);
                 break;
 
             case ADJUSTMENT:
@@ -140,5 +155,38 @@ public class StockService {
         inventoryTransactionRepository.save(transaction);
 
         log.info("Stock movement processed successfully. Transaction ID: {}", transaction.getId());
+    }
+
+    private void checkLowStock(Stock stock) {
+        try {
+            Integer reorderLevel = stock.getReorderLevel();
+
+            // If local override is missing, fetch from Product Service
+            if (reorderLevel == null) {
+                try {
+                    String url = "http://product-service/api/products/" + stock.getProductId();
+                    com.inventory.inventoryservice.dto.ProductDto product = restTemplate.getForObject(url,
+                            com.inventory.inventoryservice.dto.ProductDto.class);
+                    if (product != null) {
+                        reorderLevel = product.getReorderLevel();
+                    }
+                } catch (Exception e) {
+                    log.error("Failed to fetch product details for reorder level check: {}", e.getMessage());
+                }
+            }
+
+            if (reorderLevel != null && stock.getQuantity() <= reorderLevel) {
+                com.inventory.inventoryservice.event.StockEvent event = com.inventory.inventoryservice.event.StockEvent
+                        .createLowStockEvent(
+                                stock.getProductId(),
+                                stock.getWarehouseId(),
+                                stock.getQuantity(),
+                                reorderLevel,
+                                stock.getOrgId());
+                stockEventPublisher.notifyObservers(event);
+            }
+        } catch (Exception e) {
+            log.error("Error checking low stock for product {}", stock.getProductId(), e);
+        }
     }
 }

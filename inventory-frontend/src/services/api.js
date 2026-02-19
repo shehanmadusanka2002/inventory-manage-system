@@ -75,6 +75,7 @@ export const warehouseService = {
   getAll: () => apiClient.get('/api/warehouses'),
   getById: (id) => apiClient.get(`/api/warehouses/${id}`),
   getByOrganization: (orgId) => apiClient.get(`/api/warehouses/organization/${orgId}`),
+  getBranches: (orgId) => apiClient.get('/api/warehouses/branches', { params: { orgId } }),
   create: (warehouse) => apiClient.post('/api/warehouses', warehouse),
   update: (id, warehouse) => apiClient.put(`/api/warehouses/${id}`, warehouse),
   delete: (id) => apiClient.delete(`/api/warehouses/${id}`),

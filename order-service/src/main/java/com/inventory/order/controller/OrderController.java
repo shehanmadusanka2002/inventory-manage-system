@@ -25,10 +25,14 @@ public class OrderController {
 
     // ── Purchase Orders ───────────────────────────────────────────────────────
 
-    /** GET /api/orders/purchase — list all purchase orders */
+    /** GET /api/orders/purchase — list purchase orders for the caller's org */
     @GetMapping("/purchase")
-    public ResponseEntity<List<PurchaseOrder>> getAllPurchaseOrders() {
-        return ResponseEntity.ok(purchaseOrderService.getAllOrders());
+    public ResponseEntity<List<PurchaseOrder>> getAllPurchaseOrders(
+            @RequestHeader(value = "X-Org-ID", required = false) Long orgId) {
+        List<PurchaseOrder> orders = (orgId != null)
+                ? purchaseOrderService.getOrdersByOrg(orgId)
+                : purchaseOrderService.getAllOrders();
+        return ResponseEntity.ok(orders);
     }
 
     /** GET /api/orders/purchase/{id} — get single order */
@@ -94,10 +98,14 @@ public class OrderController {
 
     // ── Sales Orders ──────────────────────────────────────────────────────────
 
-    /** GET /api/orders/sales — list all sales orders */
+    /** GET /api/orders/sales — list sales orders for the caller's org */
     @GetMapping("/sales")
-    public ResponseEntity<List<SalesOrder>> getAllSalesOrders() {
-        return ResponseEntity.ok(salesOrderRepository.findAll());
+    public ResponseEntity<List<SalesOrder>> getAllSalesOrders(
+            @RequestHeader(value = "X-Org-ID", required = false) Long orgId) {
+        List<SalesOrder> orders = (orgId != null)
+                ? salesOrderRepository.findByOrgId(orgId)
+                : salesOrderRepository.findAll();
+        return ResponseEntity.ok(orders);
     }
 
     /** POST /api/orders/sales — create a new sales order */
