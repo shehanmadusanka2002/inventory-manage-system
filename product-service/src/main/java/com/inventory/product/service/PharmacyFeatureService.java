@@ -1,13 +1,17 @@
 package com.inventory.product.service;
 
+import com.inventory.product.dto.PharmacyStatsDTO;
 import com.inventory.product.model.PharmacyProduct;
+import com.inventory.product.model.Product;
 import com.inventory.product.repository.PharmacyProductRepository;
+import com.inventory.product.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -19,9 +23,10 @@ import java.util.Optional;
 @Slf4j
 @Transactional
 public class PharmacyFeatureService {
-    
+
     private final PharmacyProductRepository pharmacyProductRepository;
-    
+    private final ProductRepository productRepository;
+
     /**
      * Create pharmacy product attributes
      */
@@ -29,14 +34,14 @@ public class PharmacyFeatureService {
         log.info("Creating pharmacy product for productId: {}", pharmacyProduct.getProductId());
         return pharmacyProductRepository.save(pharmacyProduct);
     }
-    
+
     /**
      * Update pharmacy product attributes
      */
     public PharmacyProduct updatePharmacyProduct(Long id, PharmacyProduct pharmacyProduct) {
         PharmacyProduct existing = pharmacyProductRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Pharmacy product not found with id: " + id));
-        
+                .orElseThrow(() -> new RuntimeException("Pharmacy product not found with id: " + id));
+
         // Update fields
         existing.setBatchNumber(pharmacyProduct.getBatchNumber());
         existing.setBatchSize(pharmacyProduct.getBatchSize());
@@ -58,73 +63,73 @@ public class PharmacyFeatureService {
         existing.setWarningLabels(pharmacyProduct.getWarningLabels());
         existing.setSideEffects(pharmacyProduct.getSideEffects());
         existing.setInteractions(pharmacyProduct.getInteractions());
-        
+
         return pharmacyProductRepository.save(existing);
     }
-    
+
     /**
      * Get pharmacy product by product ID
      */
     public Optional<PharmacyProduct> getByProductId(Long productId) {
         return pharmacyProductRepository.findByProductId(productId);
     }
-    
+
     /**
      * Get products by batch number
      */
     public List<PharmacyProduct> getByBatchNumber(String batchNumber) {
         return pharmacyProductRepository.findByBatchNumber(batchNumber);
     }
-    
+
     /**
      * Get products expiring within specified days
      */
-    public List<PharmacyProduct> getProductsExpiringWithinDays(Integer days) {
-        return pharmacyProductRepository.findProductsExpiringWithinDays(days);
+    public List<PharmacyProduct> getProductsExpiringWithinDays(Long orgId, Integer days) {
+        return pharmacyProductRepository.findProductsExpiringWithinDays(orgId, days);
     }
-    
+
     /**
      * Get products expiring between dates
      */
-    public List<PharmacyProduct> getProductsExpiringBetween(LocalDate startDate, LocalDate endDate) {
-        return pharmacyProductRepository.findByExpiryDateBetween(startDate, endDate);
+    public List<PharmacyProduct> getProductsExpiringBetween(Long orgId, LocalDate startDate, LocalDate endDate) {
+        return pharmacyProductRepository.findByOrgIdAndExpiryDateBetween(orgId, startDate, endDate);
     }
-    
+
     /**
      * Get expired products
      */
-    public List<PharmacyProduct> getExpiredProducts() {
-        return pharmacyProductRepository.findByIsExpiredTrue();
+    public List<PharmacyProduct> getExpiredProducts(Long orgId) {
+        return pharmacyProductRepository.findByOrgIdAndIsExpiredTrue(orgId);
     }
-    
+
     /**
      * Get prescription products
      */
-    public List<PharmacyProduct> getPrescriptionProducts(Boolean required) {
-        return pharmacyProductRepository.findByIsPrescriptionRequired(required);
+    public List<PharmacyProduct> getPrescriptionProducts(Long orgId, Boolean required) {
+        return pharmacyProductRepository.findByOrgIdAndIsPrescriptionRequired(orgId, required);
     }
-    
+
     /**
      * Get controlled substances
      */
-    public List<PharmacyProduct> getControlledSubstances(String schedule) {
-        return pharmacyProductRepository.findByControlledSubstanceSchedule(schedule);
+    public List<PharmacyProduct> getControlledSubstances(Long orgId, String schedule) {
+        return pharmacyProductRepository.findByOrgIdAndControlledSubstanceSchedule(orgId, schedule);
     }
-    
+
     /**
      * Get products by active ingredient
      */
-    public List<PharmacyProduct> getByActiveIngredient(String ingredient) {
-        return pharmacyProductRepository.findByActiveIngredient(ingredient);
+    public List<PharmacyProduct> getByActiveIngredient(Long orgId, String ingredient) {
+        return pharmacyProductRepository.findByOrgIdAndActiveIngredient(orgId, ingredient);
     }
-    
+
     /**
      * Get products requiring refrigeration
      */
-    public List<PharmacyProduct> getRefrigeratedProducts() {
-        return pharmacyProductRepository.findByRequiresRefrigerationTrue();
+    public List<PharmacyProduct> getRefrigeratedProducts(Long orgId) {
+        return pharmacyProductRepository.findByOrgIdAndRequiresRefrigerationTrue(orgId);
     }
-    
+
     /**
      * Get recalled products
      */
@@ -134,37 +139,38 @@ public class PharmacyFeatureService {
         }
         return pharmacyProductRepository.findByIsRecalledTrue();
     }
-    
+
     /**
      * Mark product as recalled
      */
     public PharmacyProduct recallProduct(Long id, String reason) {
         PharmacyProduct product = pharmacyProductRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Pharmacy product not found"));
-        
+                .orElseThrow(() -> new RuntimeException("Pharmacy product not found"));
+
         product.setIsRecalled(true);
         product.setRecallDate(LocalDate.now());
         product.setRecallReason(reason);
-        
-        log.warn("Product recalled: productId={}, batch={}, reason={}", 
-            product.getProductId(), product.getBatchNumber(), reason);
-        
+
+        log.warn("Product recalled: productId={}, batch={}, reason={}",
+                product.getProductId(), product.getBatchNumber(), reason);
+
         return pharmacyProductRepository.save(product);
     }
-    
+
     /**
      * Check and update expiry status for all products
      */
-    public void updateExpiryStatuses() {
-        List<PharmacyProduct> allProducts = pharmacyProductRepository.findAll();
+    public void updateExpiryStatuses(Long orgId) {
+        List<PharmacyProduct> productsToUpdate = (orgId != null) ? pharmacyProductRepository.findByOrgId(orgId)
+                : pharmacyProductRepository.findAll();
+
         LocalDate today = LocalDate.now();
-        
         int updatedCount = 0;
-        for (PharmacyProduct product : allProducts) {
+        for (PharmacyProduct product : productsToUpdate) {
             if (product.getExpiryDate() != null) {
                 boolean wasExpired = product.getIsExpired();
                 boolean isNowExpired = product.getExpiryDate().isBefore(today);
-                
+
                 if (wasExpired != isNowExpired) {
                     product.setIsExpired(isNowExpired);
                     pharmacyProductRepository.save(product);
@@ -172,21 +178,59 @@ public class PharmacyFeatureService {
                 }
             }
         }
-        
+
         log.info("Updated expiry status for {} products", updatedCount);
     }
-    
+
     /**
      * Get all pharmacy products for organization
      */
     public List<PharmacyProduct> getByOrganization(Long orgId) {
         return pharmacyProductRepository.findByOrgId(orgId);
     }
-    
+
     /**
      * Delete pharmacy product
      */
     public void deletePharmacyProduct(Long id) {
         pharmacyProductRepository.deleteById(id);
+    }
+
+    /**
+     * Get summary stats for organization
+     */
+    public PharmacyStatsDTO getPharmacyStats(Long orgId) {
+        long expiringSoon = pharmacyProductRepository.countByOrgIdAndIsExpiredFalseAndDaysUntilExpiryBetween(orgId, 0,
+                30);
+        long expired = pharmacyProductRepository.countByOrgIdAndIsExpiredTrue(orgId);
+        long prescriptionOnly = pharmacyProductRepository.countByOrgIdAndIsPrescriptionRequiredTrue(orgId);
+        long refrigerated = pharmacyProductRepository.countByOrgIdAndRequiresRefrigerationTrue(orgId);
+
+        return new PharmacyStatsDTO(expiringSoon, expired, prescriptionOnly, refrigerated);
+    }
+
+    /**
+     * Sync legacy products to pharmacy table
+     */
+    public void syncPharmacyData(Long orgId) {
+        List<Product> products = productRepository.findByOrgIdAndIndustryType(orgId, "PHARMACY");
+        for (Product p : products) {
+            if (pharmacyProductRepository.findByProductId(p.getId()).isEmpty()) {
+                PharmacyProduct pp = new PharmacyProduct();
+                pp.setProductId(p.getId());
+                pp.setOrgId(orgId);
+                pp.setBatchNumber("SYNC-" + p.getSku());
+                // Placeholder expiry: +1 year
+                pp.setExpiryDate(LocalDate.now().plusYears(1));
+
+                Map<String, Object> attrs = p.getIndustrySpecificAttributes();
+                if (attrs != null) {
+                    pp.setIsPrescriptionRequired(Boolean.TRUE.equals(attrs.get("isPrescriptionRequired")));
+                    pp.setRequiresRefrigeration(Boolean.TRUE.equals(attrs.get("isRefrigerated")));
+                    pp.setActiveIngredient((String) attrs.get("genericName"));
+                }
+                pharmacyProductRepository.save(pp);
+            }
+        }
     }
 }

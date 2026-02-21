@@ -131,9 +131,11 @@ const Notifications = () => {
   const deleteNotification = async (id) => {
     if (!window.confirm('Are you sure you want to delete this notification?')) return;
     try {
+      await notificationService.delete(id);
       setNotifications(prev => prev.filter(n => n.id !== id));
     } catch (error) {
       console.error('Error deleting notification:', error);
+      setError('Failed to delete notification');
     }
   };
 
@@ -329,87 +331,126 @@ const Notifications = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {filteredNotifications.map((notification) => {
             const badgeStyle = getBadgeStyles(notification.type);
-            // Visual Differentiation Logic
             const isRead = notification.read;
-            const cardBg = isRead ? '#f8fafc' : '#ffffff'; // Light gray for Read, White for Unread
-            const titleColor = isRead ? '#64748b' : '#111827'; // Softer text for Read
-            const bodyColor = isRead ? '#94a3b8' : '#4b5563'; // Softer text for Read
 
             return (
               <div
                 key={notification.id}
                 style={{
-                  padding: '20px',
-                  backgroundColor: cardBg,
-                  borderLeft: `4px solid ${getBorderColor(notification.type)}`,
-                  border: '1px solid #e5e7eb',
-                  borderLeftWidth: '4px',
-                  borderRadius: '8px',
-                  boxShadow: isRead ? 'none' : '0 1px 3px rgba(0, 0, 0, 0.08)', // Soft shadow only for unread
-                  display: 'flex',
-                  gap: '16px',
+                  backgroundColor: '#ffffff',
+                  border: '1px solid #f3f4f6', // border-gray-100
+                  borderRadius: '0.75rem', // rounded-xl
+                  padding: '1rem', // p-4
+                  boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)', // shadow-sm
+                  transition: 'all 0.2s ease',
+                  opacity: isRead ? 0.75 : 1,
                   cursor: !isRead ? 'pointer' : 'default',
-                  transition: 'background-color 0.2s ease',
+                  position: 'relative'
                 }}
                 onClick={() => !isRead && markAsRead(notification.id)}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.boxShadow = '0 1px 2px 0 rgba(0, 0, 0, 0.05)';
+                }}
               >
-                <div style={{ fontSize: '20px', marginTop: '2px', flexShrink: 0, opacity: isRead ? 0.7 : 1 }}>
-                  {getTypeIcon(notification.type)}
-                </div>
+                {/* Header Row */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  {/* Left Group */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
+                    {/* Icon */}
+                    <div style={{ fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {getTypeIcon(notification.type)}
+                    </div>
 
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      <h3 style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: titleColor }}>
+                    {/* Title & Badges */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <h3 style={{
+                        margin: 0,
+                        fontSize: '0.875rem', // text-sm
+                        fontWeight: '600', // font-semibold
+                        color: '#111827', // text-gray-900
+                        whiteSpace: 'nowrap',
+                      }}>
                         {notification.title || 'Notification'}
                       </h3>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <span style={{ fontSize: '12px', color: '#94a3b8' }}>
-                        {notification.createdAt ? new Date(notification.createdAt).toLocaleString() : 'Just now'}
+
+                      <span style={{
+                        fontSize: '10px',
+                        padding: '2px 8px',
+                        borderRadius: '9999px',
+                        fontWeight: '700',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.025em',
+                        backgroundColor: badgeStyle.bg,
+                        color: badgeStyle.text
+                      }}>
+                        {notification.type || 'INFO'}
                       </span>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteNotification(notification.id);
-                        }}
-                        title="Delete"
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', padding: '4px' }}
-                      >
-                        <FaTrash size={14} />
-                      </button>
+                      {!isRead && (
+                        <span style={{
+                          fontSize: '10px',
+                          padding: '2px 8px',
+                          borderRadius: '9999px',
+                          fontWeight: '700',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.025em',
+                          backgroundColor: '#eff6ff',
+                          color: '#2563eb'
+                        }}>
+                          NEW
+                        </span>
+                      )}
                     </div>
                   </div>
 
-                  <div style={{ marginBottom: '8px', display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <span style={{
-                      backgroundColor: isRead ? '#f1f5f9' : badgeStyle.bg,
-                      color: isRead ? '#64748b' : badgeStyle.text,
-                      padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase'
-                    }}>
-                      {notification.type || 'INFO'}
+                  {/* Right Group */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingLeft: '12px', flexShrink: 0 }}>
+                    <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
+                      {notification.createdAt ? new Date(notification.createdAt).toLocaleString() : 'Just now'}
                     </span>
-                    {!isRead && (
-                      <span style={{ backgroundColor: '#eff6ff', color: '#2563eb', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 600 }}>
-                        NEW
-                      </span>
-                    )}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteNotification(notification.id);
+                      }}
+                      title="Delete"
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        color: '#9ca3af',
+                        padding: '6px',
+                        borderRadius: '6px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.color = '#ef4444';
+                        e.currentTarget.style.backgroundColor = '#fef2f2';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.color = '#9ca3af';
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                      }}
+                    >
+                      <FaTrash size={14} />
+                    </button>
                   </div>
+                </div>
 
-                  <p style={{ margin: 0, color: bodyColor, fontSize: '13.5px', lineHeight: '1.5' }}>
-                    {notification.message || 'No message provided'}
-                  </p>
-
-                  {notification.details && (
-                    <div style={{
-                      marginTop: '12px', padding: '10px 12px',
-                      backgroundColor: isRead ? '#f1f5f9' : '#f8fafc',
-                      borderRadius: '6px', fontSize: '13px', color: '#64748b',
-                      border: '1px solid #f1f5f9'
-                    }}>
-                      {notification.details}
-                    </div>
-                  )}
+                {/* Message Body */}
+                <div style={{
+                  marginTop: '6px',
+                  marginLeft: '30px', // Aligns with text start (18px icon + 12px gap)
+                  fontSize: '0.875rem', // text-sm
+                  color: '#4b5563', // text-gray-600
+                  lineHeight: '1.5'
+                }}>
+                  {notification.message || 'No message provided'}
                 </div>
               </div>
             );

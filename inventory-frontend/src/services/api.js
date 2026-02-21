@@ -52,6 +52,7 @@ export const productService = {
   delete: (id) => apiClient.delete(`/api/products/${id}`),
   search: (name) => apiClient.get(`/api/products/search?name=${name}`),
   registerWithStock: (data) => apiClient.post('/api/products/with-stock', data),
+  getNextSku: () => apiClient.get('/api/products/next-sku'),
 };
 
 export const inventoryService = {
@@ -121,6 +122,7 @@ export const notificationService = {
   getUnread: () => apiClient.get('/api/notifications/unread'),
   create: (notification) => apiClient.post('/api/notifications', notification),
   markAsRead: (id) => apiClient.put(`/api/notifications/${id}/read`),
+  delete: (id) => apiClient.delete(`/api/notifications/${id}`),
 };
 
 // Industry-specific services
@@ -140,6 +142,8 @@ export const pharmacyService = {
   recall: (id, reason) => apiClient.post(`/api/pharmacy/${id}/recall`, { reason }),
   updateExpiryStatuses: () => apiClient.post('/api/pharmacy/update-expiry-statuses'),
   getByOrganization: (orgId) => apiClient.get(`/api/pharmacy/organization/${orgId}`),
+  getStats: (orgId) => apiClient.get(`/api/pharmacy/stats/${orgId}`),
+  sync: () => apiClient.post('/api/pharmacy/sync'),
   delete: (id) => apiClient.delete(`/api/pharmacy/${id}`),
 };
 
@@ -256,6 +260,24 @@ export const ledgerService = {
   getWarehouseValuation: (warehouseId, strategy) => apiClient.get(`/api/inventory/ledger/warehouse/${warehouseId}/valuation?strategy=${strategy || 'FIFO'}`),
   getOldestStock: (productId, warehouseId) => apiClient.get(`/api/inventory/ledger/oldest?productId=${productId}&warehouseId=${warehouseId}`),
   getNewestStock: (productId, warehouseId) => apiClient.get(`/api/inventory/ledger/newest?productId=${productId}&warehouseId=${warehouseId}`),
+};
+
+// Category Service
+export const categoryService = {
+  getAll: () => apiClient.get('/api/categories'),
+  getById: (id) => apiClient.get(`/api/categories/${id}`),
+  create: (category) => apiClient.post('/api/categories', category),
+  update: (id, category) => apiClient.put(`/api/categories/${id}`, category),
+  delete: (id) => apiClient.delete(`/api/categories/${id}`),
+};
+
+// Brand Service
+export const brandService = {
+  getAll: () => apiClient.get('/api/brands'),
+  getById: (id) => apiClient.get(`/api/brands/${id}`),
+  create: (brand) => apiClient.post('/api/brands', brand),
+  update: (id, brand) => apiClient.put(`/api/brands/${id}`, brand),
+  delete: (id) => apiClient.delete(`/api/brands/${id}`),
 };
 
 export default apiClient;

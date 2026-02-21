@@ -14,6 +14,12 @@ function Products() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
   const [expiringDays, setExpiringDays] = useState(30);
+  const [stats, setStats] = useState({
+    expiringSoon: 0,
+    expired: 0,
+    prescriptionOnly: 0,
+    refrigerated: 0
+  });
 
   const isPharmacy = user?.industryType === 'PHARMACY';
 
@@ -21,8 +27,19 @@ function Products() {
     fetchProducts();
     if (isPharmacy) {
       fetchPharmacyProducts();
+      fetchPharmacyStats();
     }
   }, [activeTab, expiringDays]);
+
+  const fetchPharmacyStats = async () => {
+    if (!isPharmacy || !user?.orgId) return;
+    try {
+      const response = await pharmacyService.getStats(user.orgId);
+      setStats(response.data);
+    } catch (error) {
+      console.error('Error fetching pharmacy stats:', error);
+    }
+  };
 
   const fetchProducts = async () => {
     try {
@@ -70,16 +87,6 @@ function Products() {
     }
   };
 
-  const handleUpdateExpiry = async () => {
-    try {
-      await pharmacyService.updateExpiryStatuses();
-      fetchPharmacyProducts();
-      alert('Expiry statuses updated successfully');
-    } catch (error) {
-      console.error('Error updating expiry statuses:', error);
-    }
-  };
-
   const handleRecall = async (id) => {
     const reason = prompt('Enter recall reason:');
     if (reason) {
@@ -119,9 +126,6 @@ function Products() {
           {isPharmacy && <p>Batch tracking, expiry dates, and prescription management</p>}
         </div>
         <div className="action-buttons">
-          <button className="btn btn-secondary" onClick={handleUpdateExpiry}>
-            Update Statuses
-          </button>
           <button className="btn btn-primary" onClick={() => navigate('/products/register')}>
             + Register Product
           </button>
@@ -136,7 +140,7 @@ function Products() {
               <FaExclamationTriangle /> <span>Expiring Soon</span>
             </div>
             <div className="stat-value text-yellow-600">
-              {pharmacyProducts.filter(p => p.daysUntilExpiry <= 30 && !p.isExpired).length}
+              {stats.expiringSoon}
             </div>
           </div>
           <div className="stat-card" onClick={() => setActiveTab('expired')}>
@@ -144,7 +148,7 @@ function Products() {
               <FaBan /> <span>Expired</span>
             </div>
             <div className="stat-value text-red-600">
-              {pharmacyProducts.filter(p => p.isExpired).length}
+              {stats.expired}
             </div>
           </div>
           <div className="stat-card" onClick={() => setActiveTab('prescription')}>
@@ -152,7 +156,7 @@ function Products() {
               <FaPills /> <span>Prescription</span>
             </div>
             <div className="stat-value text-blue-600">
-              {pharmacyProducts.filter(p => p.isPrescriptionRequired).length}
+              {stats.prescriptionOnly}
             </div>
           </div>
           <div className="stat-card" onClick={() => setActiveTab('refrigerated')}>
@@ -160,7 +164,7 @@ function Products() {
               <FaSnowflake /> <span>Refrigerated</span>
             </div>
             <div className="stat-value text-cyan-600">
-              {pharmacyProducts.filter(p => p.requiresRefrigeration).length}
+              {stats.refrigerated}
             </div>
           </div>
         </div>

@@ -18,11 +18,12 @@ public class ProductRegistrationRequest {
     private Long orgId;
     private String industryType;
     private Map<String, Object> industrySpecificAttributes;
-    
+
     // Pharmacy-specific fields (if applicable)
     private String genericName;
     private Boolean isPrescriptionRequired;
-    
+    private Boolean isRefrigerated;
+
     // Initial Batch/Stock Details
     private InitialBatchDTO initialBatch;
 }

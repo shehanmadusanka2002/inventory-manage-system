@@ -13,22 +13,22 @@ import java.util.List;
 @RequiredArgsConstructor
 public class NotificationController {
     private final NotificationRepository notificationRepository;
-    
+
     @GetMapping
     public ResponseEntity<List<Notification>> getAllNotifications() {
         return ResponseEntity.ok(notificationRepository.findAll());
     }
-    
+
     @GetMapping("/unread")
     public ResponseEntity<List<Notification>> getUnreadNotifications() {
         return ResponseEntity.ok(notificationRepository.findByReadStatus(false));
     }
-    
+
     @PostMapping
     public ResponseEntity<Notification> createNotification(@RequestBody Notification notification) {
         return ResponseEntity.status(HttpStatus.CREATED).body(notificationRepository.save(notification));
     }
-    
+
     @PutMapping("/{id}/read")
     public ResponseEntity<Notification> markAsRead(@PathVariable Long id) {
         return notificationRepository.findById(id)
@@ -37,5 +37,14 @@ public class NotificationController {
                     return ResponseEntity.ok(notificationRepository.save(notification));
                 })
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteNotification(@PathVariable Long id) {
+        if (notificationRepository.existsById(id)) {
+            notificationRepository.deleteById(id);
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.notFound().build();
     }
 }

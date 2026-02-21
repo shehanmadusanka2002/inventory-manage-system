@@ -15,10 +15,10 @@ import java.util.List;
 @RequestMapping("/api/products")
 @RequiredArgsConstructor
 public class ProductController {
-    
+
     private final ProductService productService;
     private final ProductRegistrationService productRegistrationService;
-    
+
     @GetMapping
     public ResponseEntity<List<Product>> getAllProducts(
             @RequestHeader(value = "X-Org-ID", required = false) Long orgId,
@@ -28,54 +28,75 @@ public class ProductController {
         }
         return ResponseEntity.ok(productService.getAllProducts());
     }
-    
+
     @GetMapping("/{id}")
     public ResponseEntity<Product> getProductById(@PathVariable Long id) {
         return productService.getProductById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
-    
+
     @GetMapping("/sku/{sku}")
     public ResponseEntity<Product> getProductBySku(@PathVariable String sku) {
         return productService.getProductBySku(sku)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
-    
+
+    @GetMapping("/next-sku")
+    public ResponseEntity<String> getNextSku() {
+        return ResponseEntity.ok(productService.generateNextSku());
+    }
+
     @GetMapping("/category/{category}")
     public ResponseEntity<List<Product>> getProductsByCategory(@PathVariable String category) {
         return ResponseEntity.ok(productService.getProductsByCategory(category));
     }
-    
+
     @GetMapping("/active")
     public ResponseEntity<List<Product>> getActiveProducts() {
         return ResponseEntity.ok(productService.getActiveProducts());
     }
-    
+
     @GetMapping("/search")
     public ResponseEntity<List<Product>> searchProducts(@RequestParam String name) {
         return ResponseEntity.ok(productService.searchProducts(name));
     }
-    
+
     @PostMapping
-    public ResponseEntity<Product> createProduct(@RequestBody Product product) {
+    public ResponseEntity<Product> createProduct(
+            @RequestBody Product product,
+            @RequestHeader(value = "X-Org-ID", required = false) Long orgId) {
+        if (orgId != null) {
+            product.setOrgId(orgId);
+        }
         Product createdProduct = productService.createProduct(product);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdProduct);
     }
-    
+
     @PostMapping("/with-stock")
-    public ResponseEntity<ProductRegistrationResponse> registerProductWithStock(@RequestBody ProductRegistrationRequest request) {
+    public ResponseEntity<ProductRegistrationResponse> registerProductWithStock(
+            @RequestBody ProductRegistrationRequest request,
+            @RequestHeader(value = "X-Org-ID", required = false) Long orgId) {
+        if (orgId != null) {
+            request.setOrgId(orgId);
+        }
         ProductRegistrationResponse response = productRegistrationService.registerProductWithStock(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
-    
+
     @PutMapping("/{id}")
-    public ResponseEntity<Product> updateProduct(@PathVariable Long id, @RequestBody Product product) {
+    public ResponseEntity<Product> updateProduct(
+            @PathVariable Long id,
+            @RequestBody Product product,
+            @RequestHeader(value = "X-Org-ID", required = false) Long orgId) {
+        if (orgId != null) {
+            product.setOrgId(orgId);
+        }
         Product updatedProduct = productService.updateProduct(id, product);
         return ResponseEntity.ok(updatedProduct);
     }
-    
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteProduct(@PathVariable Long id) {
         productService.deleteProduct(id);

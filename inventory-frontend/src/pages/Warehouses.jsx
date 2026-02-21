@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { warehouseService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { Eye, Edit, Trash2, Plus } from 'lucide-react';
+import { Eye, Edit, Trash2, Plus, X, Package, MapPin, Layers, Box, GitBranch, Activity, Trash } from 'lucide-react';
+import './Warehouses.css';
 
 const primaryButtonStyle = {
   padding: '10px 24px', borderRadius: '9px', border: 'none',
@@ -290,122 +291,134 @@ function Warehouses() {
       </div>
 
       {showModal && (
-        <div className="modal" onClick={() => setShowModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>{isEditing ? 'Edit Warehouse' : 'Add New Warehouse'}</h2>
-              <button className="close-btn" onClick={() => setShowModal(false)}>×</button>
+        <div className="wh-modal-overlay">
+          <div className="wh-modal-container">
+            <div className="wh-modal-header">
+              <h2 className="wh-modal-title">{isEditing ? 'Edit Warehouse' : 'Add New Warehouse'}</h2>
+              <button className="wh-modal-close" onClick={() => setShowModal(false)}>
+                <X size={18} />
+              </button>
             </div>
             <form onSubmit={handleSubmit}>
-              <div className="form-group">
-                <label>Name</label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label>Location</label>
-                <input
-                  type="text"
-                  value={formData.location}
-                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label>Warehouse Type</label>
-                <select
-                  value={formData.warehouseType}
-                  onChange={(e) => setFormData({ ...formData, warehouseType: e.target.value })}
-                  required
-                >
-                  <option value="DRY_STORAGE">Dry Storage</option>
-                  <option value="COLD_STORAGE">Cold Storage</option>
-                  <option value="RAW_MATERIAL">Raw Material</option>
-                  <option value="FINISHED_GOODS">Finished Goods</option>
-                  <option value="TRANSIT">Transit</option>
-                  <option value="RETAIL_OUTLET">Retail Outlet</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Storage Capacity</label>
-                <input
-                  type="number"
-                  value={formData.storageCapacity}
-                  onChange={(e) => setFormData({ ...formData, storageCapacity: e.target.value })}
-                  placeholder="Capacity in units"
-                />
-              </div>
-              <div className="form-group">
-                <label>Branch</label>
-                <select
-                  value={formData.branchId}
-                  onChange={(e) => setFormData({ ...formData, branchId: e.target.value })}
-                  style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
-                >
-                  <option value="">None / Default (Main Warehouse)</option>
-                  {branches.map(b => (
-                    <option key={b.id} value={b.id}>
-                      {b.locationName} ({b.branchCode})
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="form-group">
-                <label>
+              <div className="wh-modal-body">
+                <div className="wh-form-group">
+                  <label className="wh-form-label"><Package size={14} style={{ marginRight: '6px' }} /> Name</label>
+                  <input
+                    type="text"
+                    className="wh-form-input"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="e.g. Central Medical Store"
+                    required
+                  />
+                </div>
+                <div className="wh-form-group">
+                  <label className="wh-form-label"><MapPin size={14} style={{ marginRight: '6px' }} /> Location</label>
+                  <input
+                    type="text"
+                    className="wh-form-input"
+                    value={formData.location}
+                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                    placeholder="e.g. Colombo North Hub"
+                    required
+                  />
+                </div>
+                <div className="wh-form-group">
+                  <label className="wh-form-label"><Layers size={14} style={{ marginRight: '6px' }} /> Warehouse Type</label>
+                  <select
+                    className="wh-form-select"
+                    value={formData.warehouseType}
+                    onChange={(e) => setFormData({ ...formData, warehouseType: e.target.value })}
+                    required
+                  >
+                    <option value="DRY_STORAGE">Dry Storage</option>
+                    <option value="COLD_STORAGE">Cold Storage</option>
+                    <option value="RAW_MATERIAL">Raw Material</option>
+                    <option value="FINISHED_GOODS">Finished Goods</option>
+                    <option value="TRANSIT">Transit</option>
+                    <option value="RETAIL_OUTLET">Retail Outlet</option>
+                  </select>
+                </div>
+                <div className="wh-form-group">
+                  <label className="wh-form-label"><Box size={14} style={{ marginRight: '6px' }} /> Storage Capacity</label>
+                  <input
+                    type="number"
+                    className="wh-form-input"
+                    value={formData.storageCapacity}
+                    onChange={(e) => setFormData({ ...formData, storageCapacity: e.target.value })}
+                    placeholder="Capacity in units"
+                  />
+                </div>
+                <div className="wh-form-group">
+                  <label className="wh-form-label"><GitBranch size={14} style={{ marginRight: '6px' }} /> Branch Association</label>
+                  <select
+                    className="wh-form-select"
+                    value={formData.branchId}
+                    onChange={(e) => setFormData({ ...formData, branchId: e.target.value })}
+                  >
+                    <option value="">None / Default (Main Warehouse)</option>
+                    {branches.map(b => (
+                      <option key={b.id} value={b.id}>
+                        {b.locationName} ({b.branchCode})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="wh-checkbox-group">
                   <input
                     type="checkbox"
+                    id="isActive"
                     checked={formData.isActive}
                     onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
                   />
-                  {' '}Active
-                </label>
-              </div>
-              <div className="form-group">
-                <label>Additional Attributes (Optional)</label>
-                <div style={{ marginBottom: '10px' }}>
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    onClick={addAttribute}
-                    style={{ fontSize: '14px', padding: '5px 10px' }}
-                  >
-                    + Add Attribute
-                  </button>
+                  <label htmlFor="isActive" className="wh-form-label" style={{ marginBottom: 0 }}>Active and available for stock</label>
                 </div>
-                {attributes.map((attr, index) => (
-                  <div key={index} style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
-                    <input
-                      type="text"
-                      placeholder="Key (e.g., temperature)"
-                      value={attr.key}
-                      onChange={(e) => updateAttribute(index, 'key', e.target.value)}
-                      style={{ flex: 1 }}
-                    />
-                    <input
-                      type="text"
-                      placeholder="Value (e.g., -20°C)"
-                      value={attr.value}
-                      onChange={(e) => updateAttribute(index, 'value', e.target.value)}
-                      style={{ flex: 1 }}
-                    />
+
+                <div className="wh-attr-section">
+                  <div className="wh-attr-header">
+                    <label className="wh-form-label">Additional Attributes (Optional)</label>
                     <button
                       type="button"
-                      className="btn btn-danger"
-                      onClick={() => removeAttribute(index)}
-                      style={{ fontSize: '14px', padding: '5px 10px' }}
+                      className="wh-add-attr-btn"
+                      onClick={addAttribute}
                     >
-                      ×
+                      + Add Attribute
                     </button>
                   </div>
-                ))}
+                  {attributes.map((attr, index) => (
+                    <div key={index} className="wh-attr-row">
+                      <input
+                        type="text"
+                        placeholder="Key (e.g., Temp)"
+                        value={attr.key}
+                        onChange={(e) => updateAttribute(index, 'key', e.target.value)}
+                        className="wh-form-input wh-attr-input"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Value (e.g., -20°C)"
+                        value={attr.value}
+                        onChange={(e) => updateAttribute(index, 'value', e.target.value)}
+                        className="wh-form-input wh-attr-input"
+                      />
+                      <button
+                        type="button"
+                        className="wh-remove-attr-btn"
+                        onClick={() => removeAttribute(index)}
+                      >
+                        <Trash size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className="action-buttons">
-                <button type="submit" className="btn btn-primary">{isEditing ? 'Update Warehouse' : 'Create Warehouse'}</button>
-                <button type="button" className="btn" onClick={() => setShowModal(false)}>Cancel</button>
+              <div className="wh-modal-footer">
+                <button type="button" className="wh-btn-secondary" onClick={() => setShowModal(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="wh-btn-primary">
+                  {isEditing ? 'Update Warehouse' : 'Create Warehouse'}
+                </button>
               </div>
             </form>
           </div>

@@ -1,0 +1,244 @@
+/* Warehouses.css - Modern SaaS Theme */
+
+.warehouse-wrapper {
+    padding: 24px;
+    background-color: #f9fafb;
+    min-height: 100vh;
+}
+
+/* Modal Premium Styles */
+.wh-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.4);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    animation: fadeIn 0.15s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.wh-modal-container {
+    background: #ffffff;
+    width: 100%;
+    max-width: 500px;
+    border-radius: 16px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+    animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(15px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.wh-modal-header {
+    padding: 24px 24px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.wh-modal-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0;
+}
+
+.wh-modal-close {
+    background: #f1f5f9;
+    border: none;
+    color: #64748b;
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.wh-modal-close:hover {
+    background: #e2e8f0;
+    color: #1e293b;
+}
+
+.wh-modal-body {
+    padding: 0 24px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.wh-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.wh-form-label {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: #334155;
+}
+
+.wh-form-input,
+.wh-form-select {
+    width: 100%;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    font-size: 14px;
+    transition: all 0.2s;
+    background: #ffffff;
+    box-sizing: border-box;
+    font-family: inherit;
+    color: #1e293b;
+}
+
+.wh-form-input:focus,
+.wh-form-select:focus {
+    outline: none;
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
+}
+
+.wh-form-input::placeholder {
+    color: #94a3b8;
+}
+
+.wh-checkbox-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 4px;
+}
+
+.wh-checkbox-group input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: #4f46e5;
+    cursor: pointer;
+}
+
+.wh-modal-footer {
+    padding: 16px 24px;
+    background: #f8fafc;
+    border-top: 1px solid #f1f5f9;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.wh-btn-primary {
+    background: #4f46e5;
+    color: white;
+    padding: 11px 24px;
+    border-radius: 10px;
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s;
+}
+
+.wh-btn-primary:hover {
+    background: #4338ca;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+}
+
+.wh-btn-secondary {
+    background: #ffffff;
+    color: #475569;
+    padding: 11px 24px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.wh-btn-secondary:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+}
+
+/* Attributes section */
+.wh-attr-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 6px;
+}
+
+.wh-add-attr-btn {
+    background: none;
+    border: 1px solid #e2e8f0;
+    color: #475569;
+    font-size: 13px;
+    padding: 6px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.wh-add-attr-btn:hover {
+    border-color: #cbd5e1;
+    background: #f8fafc;
+}
+
+.wh-attr-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.wh-attr-input {
+    flex: 1;
+}
+
+.wh-remove-attr-btn {
+    background: #fef2f2;
+    border: 1px solid #fee2e2;
+    color: #ef4444;
+    width: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.wh-remove-attr-btn:hover {
+    background: #fee2e2;
+}

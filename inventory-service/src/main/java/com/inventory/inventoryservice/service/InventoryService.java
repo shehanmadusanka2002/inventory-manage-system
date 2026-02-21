@@ -29,6 +29,7 @@ public class InventoryService {
 
     private static final String NOTIFICATION_SERVICE_URL = "http://notification-service/api/notifications/events/publish";
     private static final String PRODUCT_SERVICE_URL = "http://product-service/api/products/";
+    private static final String WAREHOUSE_SERVICE_URL = "http://warehouse-service/api/warehouses/";
 
     public List<com.inventory.inventoryservice.dto.StockResponseDto> getAllStocksWithDetails() {
         return stockRepository.findAll().stream()
@@ -191,47 +192,77 @@ public class InventoryService {
      */
     private void checkStockLevelsAndNotify(Stock stock, InventoryTransaction transaction) {
         try {
-            // 1. Determine Reorder Level (Product Global > Stock Local Override)
+            // 1. Determine Reorder Level and Product Name
             Integer reorderLevel = stock.getReorderLevel();
+            String productName = "Product " + stock.getProductId();
+            String warehouseName = "Warehouse " + stock.getWarehouseId();
 
             // Try fetch global from product service
             try {
                 com.inventory.inventoryservice.dto.ProductDto product = restTemplate.getForObject(
                         PRODUCT_SERVICE_URL + stock.getProductId(),
                         com.inventory.inventoryservice.dto.ProductDto.class);
-                if (product != null && product.getReorderLevel() != null) {
-                    reorderLevel = product.getReorderLevel();
+                if (product != null) {
+                    if (product.getReorderLevel() != null) {
+                        reorderLevel = product.getReorderLevel();
+                    }
+                    if (product.getName() != null) {
+                        productName = product.getName();
+                    }
                 }
             } catch (Exception e) {
-                log.warn("Failed to fetch product reorder level for alert check: {}", e.getMessage());
+                log.warn("Failed to fetch product details for alert check from {}: {}",
+                        PRODUCT_SERVICE_URL + stock.getProductId(), e.getMessage());
+            }
+
+            // Try fetch warehouse name
+            try {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> warehouse = restTemplate.getForObject(
+                        WAREHOUSE_SERVICE_URL + stock.getWarehouseId(), Map.class);
+                if (warehouse != null && warehouse.get("name") != null) {
+                    warehouseName = (String) warehouse.get("name");
+                }
+            } catch (Exception e) {
+                log.warn("Failed to fetch warehouse details for alert check from {}: {}",
+                        WAREHOUSE_SERVICE_URL + stock.getWarehouseId(), e.getMessage());
             }
 
             // 2. Check Low Stock
             if (reorderLevel != null && stock.getQuantity() <= reorderLevel) {
+                String message = String.format("Low Stock Alert: %s at %s has updated to %d (Reorder Level: %d)",
+                        productName, warehouseName, stock.getQuantity(), reorderLevel);
+
                 com.inventory.inventoryservice.event.StockEvent event = com.inventory.inventoryservice.event.StockEvent
-                        .createLowStockEvent(
-                                stock.getProductId(),
-                                stock.getWarehouseId(),
-                                stock.getQuantity(),
-                                reorderLevel,
-                                stock.getOrgId());
+                        .builder()
+                        .type(com.inventory.inventoryservice.event.StockEvent.EventType.LOW_STOCK)
+                        .productId(stock.getProductId())
+                        .warehouseId(stock.getWarehouseId())
+                        .remainingQuantity(stock.getQuantity())
+                        .thresholdLevel(reorderLevel)
+                        .orgId(stock.getOrgId())
+                        .message(message)
+                        .timestamp(java.time.LocalDateTime.now())
+                        .build();
+
                 stockEventPublisher.notifyObservers(event);
-                log.info("Triggered Low Stock Alert for Product {} at Warehouse {}", stock.getProductId(),
-                        stock.getWarehouseId());
+                log.info("Triggered Low Stock Alert: {}", message);
             }
 
             // 3. Check Out of Stock (Explicit)
             if (stock.getQuantity() <= 0) {
+                String message = String.format("Out of Stock: %s at %s", productName, warehouseName);
+
                 com.inventory.inventoryservice.event.StockEvent event = com.inventory.inventoryservice.event.StockEvent
                         .builder()
-                        .type(com.inventory.inventoryservice.event.StockEvent.EventType.LOW_STOCK) // Or OUT_OF_STOCK if
-                                                                                                   // enum exists
+                        .type(com.inventory.inventoryservice.event.StockEvent.EventType.LOW_STOCK) // reuse LOW_STOCK
+                                                                                                   // type
                         .productId(stock.getProductId())
                         .warehouseId(stock.getWarehouseId())
                         .remainingQuantity(stock.getQuantity())
                         .thresholdLevel(0)
                         .orgId(stock.getOrgId())
-                        .message("Out of Stock: Product " + stock.getProductId())
+                        .message(message)
                         .timestamp(java.time.LocalDateTime.now())
                         .build();
                 stockEventPublisher.notifyObservers(event);
