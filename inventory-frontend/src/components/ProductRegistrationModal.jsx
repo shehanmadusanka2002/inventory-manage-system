@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { productService } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import { Loader2, X, AlertCircle } from 'lucide-react';
 import './ProductRegistrationModal.css';
 
 const ProductRegistrationModal = ({ isOpen, onClose, onSuccess, categories, brands, editingProduct, onSave }) => {
+    const { user } = useAuth();
     const [loading, setLoading] = useState(false);
     const [skuLoading, setSkuLoading] = useState(false);
     const [formData, setFormData] = useState({
@@ -47,7 +49,8 @@ const ProductRegistrationModal = ({ isOpen, onClose, onSuccess, categories, bran
     const fetchNextSku = async () => {
         try {
             setSkuLoading(true);
-            const response = await productService.getNextSku();
+            const orgId = user?.orgId || 1;
+            const response = await productService.getNextSku(orgId);
             // 2. Set the returned SKU to state
             setFormData(prev => ({ ...prev, sku: response.data }));
         } catch (error) {

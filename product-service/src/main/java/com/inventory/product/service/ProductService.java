@@ -127,8 +127,8 @@ public class ProductService {
         });
     }
 
-    public String generateNextSku() {
-        return productRepository.findTopByOrderByIdDesc()
+    public String generateNextSku(Long orgId) {
+        return productRepository.findTopByOrgIdOrderByIdDesc(orgId)
                 .map(product -> {
                     String lastSku = product.getSku();
                     if (lastSku != null && lastSku.startsWith("PRD-")) {

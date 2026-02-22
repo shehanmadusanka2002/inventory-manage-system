@@ -53,7 +53,7 @@ export const productService = {
   delete: (id) => apiClient.delete(`/api/products/${id}`),
   search: (name) => apiClient.get(`/api/products/search?name=${name}`),
   registerWithStock: (data) => apiClient.post('/api/products/with-stock', data),
-  getNextSku: () => apiClient.get('/api/products/next-sku'),
+  getNextSku: (orgId) => apiClient.get(`/api/products/next-sku/${orgId}`),
 };
 
 export const inventoryService = {

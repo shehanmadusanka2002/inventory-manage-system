@@ -53,7 +53,8 @@ function UnifiedProductRegistration({ categories: propsCategories, brands: props
       }
 
       // Fetch Next SKU
-      promises.push(productService.getNextSku().then(res => {
+      const orgId = user?.orgId || 1;
+      promises.push(productService.getNextSku(orgId).then(res => {
         setFormData(prev => ({ ...prev, sku: res.data }));
       }));
 
@@ -140,7 +141,8 @@ function UnifiedProductRegistration({ categories: propsCategories, brands: props
       // Auto-fetch next SKU after registration if it's not closing
       if (!onRefresh) {
         try {
-          const res = await productService.getNextSku();
+          const orgId = user?.orgId || 1;
+          const res = await productService.getNextSku(orgId);
           setFormData(prev => ({ ...prev, sku: res.data }));
         } catch (e) {
           console.error('Error fetching next SKU:', e);

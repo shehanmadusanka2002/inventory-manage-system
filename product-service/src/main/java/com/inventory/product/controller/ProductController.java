@@ -48,9 +48,9 @@ public class ProductController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @GetMapping("/next-sku")
-    public ResponseEntity<String> getNextSku() {
-        return ResponseEntity.ok(productService.generateNextSku());
+    @GetMapping("/next-sku/{orgId}")
+    public ResponseEntity<String> getNextSku(@PathVariable Long orgId) {
+        return ResponseEntity.ok(productService.generateNextSku(orgId));
     }
 
     @GetMapping("/category/{category}")
