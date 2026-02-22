@@ -8,4 +8,6 @@ public class ProductDto {
     private Integer reorderLevel;
     private String name;
     private String sku;
+    private String category;
+    private java.math.BigDecimal price;
 }

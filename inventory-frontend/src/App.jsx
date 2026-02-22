@@ -19,7 +19,7 @@ import Notifications from './pages/Notifications';
 // import Catalog from './pages/Catalog'; // Removed old page
 import CatalogSettings from './pages/CatalogSettings';
 import Analytics from './pages/Analytics';
-import StockLedger from './pages/StockLedger';
+import StockLedgerValuation from './pages/StockLedgerValuation';
 import { FaBox, FaWarehouse, FaShoppingCart, FaTruck, FaChartBar, FaBuilding, FaPills, FaTshirt, FaIndustry, FaUser, FaBell, FaBook, FaChartLine, FaFileAlt, FaSignOutAlt } from 'react-icons/fa';
 
 function AppContent() {
@@ -183,7 +183,7 @@ function AppContent() {
                   <Route path="/catalog" element={<CatalogSettings />} />
                   {/* <Route path="/catalog/settings" element={<CatalogSettings />} /> Removed redundant route */}
                   <Route path="/analytics" element={<Analytics />} />
-                  <Route path="/stock-ledger" element={<StockLedger />} />
+                  <Route path="/stock-ledger" element={<StockLedgerValuation />} />
                 </Routes>
               </main>
             </div>

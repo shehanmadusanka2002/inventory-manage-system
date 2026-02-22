@@ -236,8 +236,8 @@ export const analyticsService = {
   getInventorySummary: (orgId) => apiClient.get(`/api/analytics/inventory/${orgId}/summary`),
   getLowStock: (orgId, threshold) => apiClient.get(`/api/analytics/inventory/${orgId}/low-stock?threshold=${threshold || 10}`),
   getSalesAnalytics: (orgId) => apiClient.get(`/api/analytics/sales/${orgId}`),
-  getSalesSummary: (orgId) => apiClient.get(`/api/analytics/sales/${orgId}/summary`),
-  getMonthlySales: (orgId, startDate, endDate) => apiClient.get(`/api/analytics/sales/${orgId}/monthly?startDate=${startDate}&endDate=${endDate}`),
+  getSalesSummary: (orgId, startDate, endDate) => apiClient.get(`/api/analytics/sales/${orgId}/summary?startDate=${startDate}&endDate=${endDate}`),
+  getMonthlySales: (orgId, monthYear) => apiClient.get(`/api/analytics/sales/${orgId}/monthly?monthYear=${monthYear}`),
   getDashboard: (orgId) => apiClient.get(`/api/analytics/dashboard/${orgId}`),
 };
 

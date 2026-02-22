@@ -1,0 +1,221 @@
+.stock-ledger-valuation {
+    background-color: #f9fafb;
+    /* bg-gray-50 */
+    min-height: 100vh;
+    padding: 2rem;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+.ledger-header {
+    margin-bottom: 2rem;
+}
+
+.ledger-header h1 {
+    font-size: 1.5rem;
+    /* text-2xl */
+    font-weight: 700;
+    /* font-bold */
+    color: #111827;
+    /* text-gray-900 */
+    margin: 0;
+}
+
+.ledger-header p {
+    color: #6b7280;
+    /* text-gray-500 */
+    margin-top: 0.25rem;
+}
+
+/* Card Styling */
+.white-card {
+    background-color: #ffffff;
+    /* bg-white */
+    padding: 1.25rem;
+    /* p-5 */
+    border-radius: 0.75rem;
+    /* rounded-xl */
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    /* shadow-sm */
+    border: 1px solid #e5e7eb;
+    /* border-gray-200 */
+    margin-bottom: 1.5rem;
+}
+
+/* Filter Grid */
+.filter-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    align-items: flex-end;
+}
+
+@media (max-width: 768px) {
+    .filter-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.filter-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.filter-item label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+}
+
+.filter-item select {
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.375rem;
+    border: 1px solid #d1d5db;
+    background-color: #fff;
+    font-size: 0.875rem;
+    color: #111827;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.filter-item select:focus {
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 2px #e0e7ff;
+}
+
+.btn-load {
+    background-color: #4f46e5;
+    /* bg-indigo-600 */
+    color: #ffffff;
+    padding: 0.5rem 1.5rem;
+    /* px-6 py-2 */
+    border-radius: 0.375rem;
+    /* rounded-md */
+    font-weight: 500;
+    /* font-medium */
+    border: none;
+    cursor: pointer;
+    height: 38px;
+    transition: background-color 0.2s;
+}
+
+.btn-load:hover {
+    background-color: #4338ca;
+    /* hover:bg-indigo-700 */
+}
+
+/* Method Alert */
+.method-alert {
+    background-color: #eff6ff;
+    /* bg-blue-50 */
+    color: #1e40af;
+    /* text-blue-800 */
+    padding: 0.75rem;
+    /* p-3 */
+    border-radius: 0.375rem;
+    /* rounded-md */
+    font-size: 0.875rem;
+    /* text-sm */
+    margin-top: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Empty State */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem 2rem;
+    text-align: center;
+}
+
+.empty-state svg {
+    color: #9ca3af;
+    margin-bottom: 1rem;
+}
+
+.empty-state h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #111827;
+    margin: 0;
+}
+
+.empty-state p {
+    color: #6b7280;
+    margin-top: 0.25rem;
+}
+
+/* Table styling */
+.ledger-table-wrapper {
+    overflow-x: auto;
+}
+
+.ledger-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.ledger-table th {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #f3f4f6;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: #6b7280;
+    background-color: #f9fafb;
+}
+
+.ledger-table td {
+    padding: 1rem;
+    border-bottom: 1px solid #f3f4f6;
+    font-size: 0.875rem;
+    color: #111827;
+}
+
+.type-in {
+    color: #059669;
+    /* text-green-600 */
+    font-weight: 600;
+}
+
+.type-out {
+    color: #dc2626;
+    /* text-red-600 */
+    font-weight: 600;
+}
+
+/* Bottom summary section */
+.summary-container {
+    margin-top: 2rem;
+    display: grid;
+    gap: 1.5rem;
+}
+
+.summary-method {
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.summary-method:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.summary-method h4 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #111827;
+    margin: 0 0 0.5rem 0;
+}
+
+.summary-method p {
+    font-size: 0.875rem;
+    color: #6b7280;
+    /* muted text */
+    line-height: 1.5;
+}

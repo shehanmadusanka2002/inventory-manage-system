@@ -78,4 +78,12 @@ public class InventoryController {
     public ResponseEntity<List<InventoryTransaction>> getTransactionsByProduct(@PathVariable Long productId) {
         return ResponseEntity.ok(inventoryService.getTransactionsByProduct(productId));
     }
+
+    @GetMapping("/stocks/low-stock/count")
+    public ResponseEntity<Long> getLowStockCount(
+            @RequestHeader(value = "X-Org-ID", required = false) Long orgId) {
+        if (orgId == null)
+            return ResponseEntity.ok(0L);
+        return ResponseEntity.ok(inventoryService.getLowStockCountByOrg(orgId));
+    }
 }

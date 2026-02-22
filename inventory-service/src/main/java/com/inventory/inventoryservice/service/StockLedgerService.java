@@ -13,7 +13,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.ArrayList;
 
 /**
  * Stock Ledger Service - Manages cost layers and inventory valuation
@@ -23,27 +22,27 @@ import java.util.ArrayList;
 @RequiredArgsConstructor
 @Slf4j
 public class StockLedgerService {
-    
+
     private final StockLedgerRepository ledgerRepository;
     private final InventoryTransactionRepository transactionRepository;
     private final ValuationContext valuationContext;
-    
+
     /**
      * Record a transaction in the stock ledger
      */
     @Transactional
     public StockLedger recordTransaction(InventoryTransaction transaction) {
         log.info("Recording transaction {} in stock ledger", transaction.getId());
-        
+
         // Get latest ledger entry for this product-warehouse combination
         StockLedger previousEntry = ledgerRepository
-            .findLatestByProductAndWarehouse(transaction.getProductId(), transaction.getWarehouseId())
-            .orElse(null);
-        
+                .findTopByProductIdAndWarehouseIdOrderByTransactionDateDesc(transaction.getProductId(),
+                        transaction.getWarehouseId())
+                .orElse(null);
+
         Integer previousBalance = previousEntry != null ? previousEntry.getQuantityBalance() : 0;
-        BigDecimal previousRunningBalance = previousEntry != null ? 
-            previousEntry.getRunningBalance() : BigDecimal.ZERO;
-        
+        BigDecimal previousRunningBalance = previousEntry != null ? previousEntry.getRunningBalance() : BigDecimal.ZERO;
+
         // Create new ledger entry
         StockLedger ledgerEntry = new StockLedger();
         ledgerEntry.setProductId(transaction.getProductId());
@@ -55,7 +54,7 @@ public class StockLedgerService {
         ledgerEntry.setReferenceId(transaction.getReferenceId());
         ledgerEntry.setNotes(transaction.getNotes());
         ledgerEntry.setCreatedBy(transaction.getCreatedBy());
-        
+
         // Calculate quantities based on transaction type
         switch (transaction.getType()) {
             case IN:
@@ -81,126 +80,115 @@ public class StockLedgerService {
                 ledgerEntry.setQuantityBalance(previousBalance + transaction.getQuantity());
                 break;
         }
-        
-        // Calculate costs
-        BigDecimal unitCost = transaction.getUnitPrice() != null ? 
-            transaction.getUnitPrice() : BigDecimal.ZERO;
+
+        BigDecimal unitCost = transaction.getUnitPrice() != null ? transaction.getUnitPrice() : BigDecimal.ZERO;
         ledgerEntry.setUnitCost(unitCost);
-        
+
+        int qty = transaction.getQuantity() != null ? transaction.getQuantity() : 0;
         BigDecimal transactionCost = unitCost.multiply(
-            BigDecimal.valueOf(Math.abs(transaction.getQuantity()))
-        ).setScale(2, RoundingMode.HALF_UP);
+                BigDecimal.valueOf(Math.abs(qty))).setScale(2, RoundingMode.HALF_UP);
         ledgerEntry.setTotalCost(transactionCost);
-        
+
         // Update running balance
         if (ledgerEntry.getQuantityIn() > 0) {
             ledgerEntry.setRunningBalance(previousRunningBalance.add(transactionCost));
         } else {
             ledgerEntry.setRunningBalance(previousRunningBalance.subtract(transactionCost));
         }
-        
+
         // Calculate weighted average cost
         BigDecimal weightedAvgCost = calculateWeightedAverageCost(
-            transaction.getProductId(), 
-            transaction.getWarehouseId()
-        );
+                transaction.getProductId(),
+                transaction.getWarehouseId());
         ledgerEntry.setWeightedAvgCost(weightedAvgCost);
-        
+
         // Calculate FIFO and LIFO values
         List<InventoryTransaction> allTransactions = transactionRepository
-            .findByProductIdAndWarehouseIdOrderByTransactionDateAsc(
-                transaction.getProductId(), 
-                transaction.getWarehouseId()
-            );
-        
+                .findByProductIdAndWarehouseIdOrderByTransactionDateAsc(
+                        transaction.getProductId(),
+                        transaction.getWarehouseId());
+
         if (ledgerEntry.getQuantityBalance() > 0) {
             BigDecimal fifoValue = valuationContext.calculateStockValue(
-                "FIFO", allTransactions, ledgerEntry.getQuantityBalance()
-            );
+                    "FIFO", allTransactions, ledgerEntry.getQuantityBalance());
             ledgerEntry.setFifoValue(fifoValue);
-            
+
             BigDecimal lifoValue = valuationContext.calculateStockValue(
-                "LIFO", allTransactions, ledgerEntry.getQuantityBalance()
-            );
+                    "LIFO", allTransactions, ledgerEntry.getQuantityBalance());
             ledgerEntry.setLifoValue(lifoValue);
         } else {
             ledgerEntry.setFifoValue(BigDecimal.ZERO);
             ledgerEntry.setLifoValue(BigDecimal.ZERO);
         }
-        
+
         return ledgerRepository.save(ledgerEntry);
     }
-    
+
     /**
      * Calculate weighted average cost for a product-warehouse
      */
     public BigDecimal calculateWeightedAverageCost(Long productId, Long warehouseId) {
         List<InventoryTransaction> transactions = transactionRepository
-            .findByProductIdAndWarehouseIdOrderByTransactionDateAsc(productId, warehouseId);
-        
+                .findByProductIdAndWarehouseIdOrderByTransactionDateAsc(productId, warehouseId);
+
         BigDecimal totalCost = BigDecimal.ZERO;
         int totalQuantity = 0;
-        
+
         for (InventoryTransaction txn : transactions) {
             if (txn.getType().name().equals("IN") || txn.getType().name().equals("RETURN")) {
                 if (txn.getUnitPrice() != null) {
                     totalCost = totalCost.add(
-                        txn.getUnitPrice().multiply(BigDecimal.valueOf(txn.getQuantity()))
-                    );
+                            txn.getUnitPrice().multiply(BigDecimal.valueOf(txn.getQuantity())));
                     totalQuantity += txn.getQuantity();
                 }
             }
         }
-        
+
         if (totalQuantity == 0) {
             return BigDecimal.ZERO;
         }
-        
+
         return totalCost.divide(
-            BigDecimal.valueOf(totalQuantity), 
-            4, 
-            RoundingMode.HALF_UP
-        );
+                BigDecimal.valueOf(totalQuantity),
+                4,
+                RoundingMode.HALF_UP);
     }
-    
+
     /**
      * Get stock ledger for a product-warehouse
      */
     public List<StockLedger> getLedger(Long productId, Long warehouseId) {
         return ledgerRepository.findByProductIdAndWarehouseIdOrderByTransactionDateAsc(
-            productId, warehouseId
-        );
+                productId, warehouseId);
     }
-    
+
     /**
      * Get latest ledger entry
      */
     public StockLedger getLatestEntry(Long productId, Long warehouseId) {
-        return ledgerRepository.findLatestByProductAndWarehouse(productId, warehouseId)
-            .orElse(null);
+        return ledgerRepository.findTopByProductIdAndWarehouseIdOrderByTransactionDateDesc(productId, warehouseId)
+                .orElse(null);
     }
-    
+
     /**
      * Get ledger entries for a date range
      */
     public List<StockLedger> getLedgerByDateRange(
-        Long productId, 
-        Long warehouseId,
-        LocalDateTime startDate, 
-        LocalDateTime endDate
-    ) {
+            Long productId,
+            Long warehouseId,
+            LocalDateTime startDate,
+            LocalDateTime endDate) {
         return ledgerRepository.findByProductWarehouseAndDateRange(
-            productId, warehouseId, startDate, endDate
-        );
+                productId, warehouseId, startDate, endDate);
     }
-    
+
     /**
      * Get organization ledger
      */
     public List<StockLedger> getOrganizationLedger(Long orgId) {
         return ledgerRepository.findByOrgIdOrderByTransactionDateDesc(orgId);
     }
-    
+
     /**
      * Rebuild stock ledger from transactions
      * Use this to recalculate ledger if corrections are needed
@@ -208,50 +196,47 @@ public class StockLedgerService {
     @Transactional
     public void rebuildLedger(Long productId, Long warehouseId) {
         log.info("Rebuilding stock ledger for product {} in warehouse {}", productId, warehouseId);
-        
+
         // Delete existing ledger entries
         List<StockLedger> existingEntries = ledgerRepository
-            .findByProductIdAndWarehouseIdOrderByTransactionDateAsc(productId, warehouseId);
+                .findByProductIdAndWarehouseIdOrderByTransactionDateAsc(productId, warehouseId);
         ledgerRepository.deleteAll(existingEntries);
-        
+
         // Get all transactions
         List<InventoryTransaction> transactions = transactionRepository
-            .findByProductIdAndWarehouseIdOrderByTransactionDateAsc(productId, warehouseId);
-        
+                .findByProductIdAndWarehouseIdOrderByTransactionDateAsc(productId, warehouseId);
+
         // Rebuild ledger entry by entry
         for (InventoryTransaction transaction : transactions) {
             recordTransaction(transaction);
         }
-        
+
         log.info("Stock ledger rebuilt successfully");
     }
-    
+
     /**
      * Get current stock value using different strategies
      */
     public StockValuationSummary getCurrentStockValuation(Long productId, Long warehouseId) {
         StockLedger latestEntry = getLatestEntry(productId, warehouseId);
-        
+
         if (latestEntry == null || latestEntry.getQuantityBalance() == 0) {
             return new StockValuationSummary(
-                productId, warehouseId, 0, 
-                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO
-            );
+                    productId, warehouseId, 0,
+                    BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
         }
-        
+
         return new StockValuationSummary(
-            productId,
-            warehouseId,
-            latestEntry.getQuantityBalance(),
-            latestEntry.getFifoValue(),
-            latestEntry.getLifoValue(),
-            latestEntry.getWeightedAvgCost().multiply(
-                BigDecimal.valueOf(latestEntry.getQuantityBalance())
-            ).setScale(2, RoundingMode.HALF_UP),
-            latestEntry.getWeightedAvgCost()
-        );
+                productId,
+                warehouseId,
+                latestEntry.getQuantityBalance(),
+                latestEntry.getFifoValue(),
+                latestEntry.getLifoValue(),
+                latestEntry.getWeightedAvgCost().multiply(
+                        BigDecimal.valueOf(latestEntry.getQuantityBalance())).setScale(2, RoundingMode.HALF_UP),
+                latestEntry.getWeightedAvgCost());
     }
-    
+
     /**
      * DTO for stock valuation summary
      */
@@ -263,10 +248,10 @@ public class StockLedgerService {
         public BigDecimal lifoValue;
         public BigDecimal weightedAvgValue;
         public BigDecimal weightedAvgCost;
-        
+
         public StockValuationSummary(Long productId, Long warehouseId, Integer currentQuantity,
-                                     BigDecimal fifoValue, BigDecimal lifoValue,
-                                     BigDecimal weightedAvgValue, BigDecimal weightedAvgCost) {
+                BigDecimal fifoValue, BigDecimal lifoValue,
+                BigDecimal weightedAvgValue, BigDecimal weightedAvgCost) {
             this.productId = productId;
             this.warehouseId = warehouseId;
             this.currentQuantity = currentQuantity;

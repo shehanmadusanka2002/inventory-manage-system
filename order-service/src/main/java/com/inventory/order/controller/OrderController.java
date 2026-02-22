@@ -138,4 +138,12 @@ public class OrderController {
                     .body(Map.of("error", e.getMessage()));
         }
     }
+
+    @GetMapping("/sales/count")
+    public ResponseEntity<Long> getSalesOrderCount(
+            @RequestHeader(value = "X-Org-ID", required = false) Long orgId) {
+        if (orgId == null)
+            return ResponseEntity.ok(0L);
+        return ResponseEntity.ok(salesOrderRepository.countByOrgId(orgId));
+    }
 }

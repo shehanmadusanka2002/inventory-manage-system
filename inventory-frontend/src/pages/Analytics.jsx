@@ -1,328 +1,496 @@
 import React, { useState, useEffect } from 'react';
-import { analyticsService, auditService } from '../services/api';
-import { FaChartLine, FaBoxes, FaShoppingCart, FaExclamationTriangle, FaHistory, FaUser, FaCalendar } from 'react-icons/fa';
+import {
+  DollarSign,
+  ShoppingCart,
+  AlertTriangle,
+  Clock,
+  LayoutDashboard,
+  Package,
+  TrendingUp,
+  FileText
+} from 'lucide-react';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  Cell
+} from 'recharts';
+import { analyticsService, pharmacyService, auditService } from '../services/api';
+import './Analytics.css';
 
 const Analytics = () => {
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [loading, setLoading] = useState(true);
-  const [organizationId, setOrganizationId] = useState(1);
-  const [dashboardData, setDashboardData] = useState(null);
-  const [inventorySummary, setInventorySummary] = useState(null);
-  const [salesSummary, setSalesSummary] = useState(null);
-  const [lowStock, setLowStock] = useState([]);
-  const [auditLogs, setAuditLogs] = useState([]);
-  const [activeTab, setActiveTab] = useState('dashboard'); // dashboard, inventory, sales, audit
-
-  useEffect(() => {
-    if (organizationId) {
-      fetchAnalytics();
-    }
-  }, [organizationId]);
-
-  const fetchAnalytics = async () => {
-    try {
-      setLoading(true);
-      
-      if (activeTab === 'dashboard') {
-        const response = await analyticsService.getDashboard(organizationId);
-        setDashboardData(response.data);
-      } else if (activeTab === 'inventory') {
-        const [summaryRes, lowStockRes] = await Promise.all([
-          analyticsService.getInventorySummary(organizationId),
-          analyticsService.getLowStock(organizationId, 10)
-        ]);
-        setInventorySummary(summaryRes.data);
-        setLowStock(lowStockRes.data);
-      } else if (activeTab === 'sales') {
-        const response = await analyticsService.getSalesSummary(organizationId);
-        setSalesSummary(response.data);
-      } else if (activeTab === 'audit') {
-        const response = await auditService.getByOrganization(organizationId);
-        setAuditLogs(response.data || []);
-      }
-    } catch (error) {
-      console.error('Error fetching analytics:', error);
-      // Don't show alert for missing data
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (organizationId) {
-      fetchAnalytics();
-    }
-  }, [activeTab]);
+  const [data, setData] = useState({
+    kpis: {
+      revenue: 0,
+      orders: 0,
+      lowStock: 0,
+      expiringSoon: 0
+    },
+    salesTrend: [],
+    categories: [],
+    inventoryItems: [],
+    salesOrders: [],
+    auditLogs: []
+  });
 
   const tabs = [
-    { id: 'dashboard', label: 'Dashboard', icon: <FaChartLine /> },
-    { id: 'inventory', label: 'Inventory', icon: <FaBoxes /> },
-    { id: 'sales', label: 'Sales', icon: <FaShoppingCart /> },
-    { id: 'audit', label: 'Audit Logs', icon: <FaHistory /> },
+    { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
+    { id: 'inventory', label: 'Inventory Reports', icon: <Package size={18} /> },
+    { id: 'sales', label: 'Sales Reports', icon: <TrendingUp size={18} /> },
+    { id: 'audit', label: 'Audit Logs', icon: <FileText size={18} /> },
   ];
 
-  return (
-    <div className="page-container">
-      <div className="page-header">
-        <div>
-          <h1>Analytics & Reports</h1>
-          <p style={{ color: '#9ca3af', marginTop: '0.5rem' }}>
-            Business intelligence and audit trails
-          </p>
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      try {
+        setLoading(true);
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        const orgId = user.orgId;
+
+        if (!orgId) return;
+
+        // Fetch Dashboard Metrics & Pharmacy Stats
+        const [dashboardRes, pharmacyRes, salesRes, inventoryRes, auditRes] = await Promise.all([
+          analyticsService.getDashboard(orgId),
+          pharmacyService.getStats(orgId),
+          analyticsService.getSalesAnalytics(orgId),
+          analyticsService.getInventoryAnalytics(orgId),
+          auditService.getByOrganization(orgId)
+        ]);
+
+        const dashboard = dashboardRes.data || {};
+        const pharmacy = pharmacyRes.data || {};
+        const salesRaw = salesRes.data || [];
+        const inventoryRaw = inventoryRes.data || [];
+        const auditRaw = auditRes.data || [];
+
+        // Process Sales Trend (Last 7 Days)
+        const last7Days = [...Array(7)].map((_, i) => {
+          const d = new Date();
+          d.setDate(d.getDate() - i);
+          return d.toISOString().split('T')[0];
+        }).reverse();
+
+        const trendData = last7Days.map(date => {
+          const dayTotal = salesRaw
+            .filter(s => {
+              const sDate = s.saleDate ||
+                (s.createdAt ? s.createdAt.substring(0, 10) : null) ||
+                (s.created_at ? s.created_at.substring(0, 10) : null);
+              return sDate === date;
+            })
+            .reduce((sum, s) => sum + (s.totalAmount || 0), 0);
+
+          const dayName = new Date(date).toLocaleDateString('en-US', { weekday: 'short' });
+          return { name: dayName, sales: dayTotal, fullDate: date };
+        });
+
+        // Process Categories (Top 5 by Stock Value)
+        const categoryMap = {};
+        inventoryRaw.forEach(item => {
+          const cat = item.category || 'Other';
+          categoryMap[cat] = (categoryMap[cat] || 0) + (item.stockValue || 0);
+        });
+
+        const catData = Object.entries(categoryMap)
+          .map(([name, value]) => ({ name, value }))
+          .sort((a, b) => b.value - a.value)
+          .slice(0, 5)
+          .map((c, i) => ({
+            ...c,
+            color: ['#4f46e5', '#10b981', '#f59e0b', '#ec4899', '#3b82f6'][i]
+          }));
+
+        setData({
+          kpis: {
+            revenue: dashboard.salesThisMonth?.totalSales || 0,
+            orders: dashboard.salesThisMonth?.totalOrders || 0,
+            lowStock: dashboard.lowStockAlerts || 0,
+            expiringSoon: pharmacy.expiringSoon || 0
+          },
+          salesTrend: trendData,
+          categories: catData.length > 0 ? catData : [
+            { name: 'No Data', value: 0, color: '#e5e7eb' }
+          ],
+          inventoryItems: inventoryRaw,
+          salesOrders: salesRaw,
+          auditLogs: auditRaw
+        });
+
+      } catch (error) {
+        console.error('Failed to fetch analytics:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAnalytics();
+  }, []);
+
+  const renderDashboard = () => (
+    <>
+      {/* KPI Cards */}
+      <div className="kpi-grid">
+        <div className="kpi-card">
+          <div className="kpi-icon icon-revenue">
+            <DollarSign size={24} />
+          </div>
+          <div className="kpi-info">
+            <h3>Monthly Revenue</h3>
+            <p>${parseFloat(data.kpis.revenue).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <label style={{ color: '#d1d5db', fontSize: '0.875rem' }}>Organization:</label>
-          <input
-            type="number"
-            value={organizationId}
-            onChange={(e) => setOrganizationId(e.target.value)}
-            style={{
-              padding: '0.5rem 0.75rem',
-              backgroundColor: '#1f2937',
-              border: '1px solid #374151',
-              borderRadius: '0.5rem',
-              color: 'white',
-              width: '100px',
-            }}
-          />
+        <div className="kpi-card">
+          <div className="kpi-icon icon-orders">
+            <ShoppingCart size={24} />
+          </div>
+          <div className="kpi-info">
+            <h3>Total Orders</h3>
+            <p>{data.kpis.orders}</p>
+          </div>
+        </div>
+        <div className="kpi-card">
+          <div className="kpi-icon icon-low-stock">
+            <AlertTriangle size={24} />
+          </div>
+          <div className="kpi-info">
+            <h3>Low Stock Alerts</h3>
+            <p>{data.kpis.lowStock}</p>
+          </div>
+        </div>
+        <div className="kpi-card">
+          <div className="kpi-icon icon-expiry">
+            <Clock size={24} />
+          </div>
+          <div className="kpi-info">
+            <h3>Expiring Soon</h3>
+            <p>{data.kpis.expiringSoon}</p>
+          </div>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid #374151' }}>
+      {/* Charts Section */}
+      <div className="charts-grid">
+        <div className="chart-card">
+          <h4>7-Day Sales Trend</h4>
+          <div style={{ width: '100%', height: 300 }}>
+            {loading ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#9ca3af' }}>
+                Loading trend data...
+              </div>
+            ) : (
+              <ResponsiveContainer>
+                <LineChart data={data.salesTrend}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                  <XAxis
+                    dataKey="name"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: '#6b7280', fontSize: 12 }}
+                    dy={10}
+                  />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: '#6b7280', fontSize: 12 }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      borderRadius: '8px',
+                      border: 'none',
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                    }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="sales"
+                    stroke="#4f46e5"
+                    strokeWidth={3}
+                    dot={{ r: 4, fill: '#4f46e5', strokeWidth: 2, stroke: '#fff' }}
+                    activeDot={{ r: 6, strokeWidth: 0 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
+
+        <div className="chart-card">
+          <h4>Top Categories by Value</h4>
+          <div style={{ width: '100%', height: 300 }}>
+            {loading ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#9ca3af' }}>
+                Loading category data...
+              </div>
+            ) : (
+              <ResponsiveContainer>
+                <BarChart data={data.categories} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f3f4f6" />
+                  <XAxis type="number" hide />
+                  <YAxis
+                    dataKey="name"
+                    type="category"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: '#374151', fontSize: 12, fontWeight: 500 }}
+                    width={100}
+                  />
+                  <Tooltip
+                    cursor={{ fill: '#f9fafb' }}
+                    contentStyle={{
+                      borderRadius: '8px',
+                      border: 'none',
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                    }}
+                  />
+                  <Bar
+                    dataKey="value"
+                    radius={[0, 4, 4, 0]}
+                    barSize={20}
+                  >
+                    {data.categories.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+
+  const renderInventoryReports = () => (
+    <div className="reports-container">
+      <div className="inventory-stats-row">
+        <div className="inventory-stat-card">
+          <span className="stat-label">Total Unique Products</span>
+          <span className="stat-value">{data.inventoryItems.length}</span>
+        </div>
+        <div className="inventory-stat-card">
+          <span className="stat-label">Total Inventory Value</span>
+          <span className="stat-value">
+            ${data.inventoryItems.reduce((sum, item) => sum + (item.stockValue || 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </span>
+        </div>
+        <div className="inventory-stat-card">
+          <span className="stat-label">Low Stock Items</span>
+          <span className="stat-value" style={{ color: data.kpis.lowStock > 0 ? '#ef4444' : 'inherit' }}>
+            {data.kpis.lowStock}
+          </span>
+        </div>
+      </div>
+
+      <div className="report-table-card">
+        <div className="table-header">
+          <h3>Inventory Breakdown</h3>
+          <p>Real-time analytics across all warehouses</p>
+        </div>
+        <div className="table-responsive">
+          <table className="analytics-table">
+            <thead>
+              <tr>
+                <th>Product Details</th>
+                <th>Category</th>
+                <th>Quantity</th>
+                <th>Status</th>
+                <th>Valuation</th>
+                <th>Last Movement</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.inventoryItems.map((item) => (
+                <tr key={item.id}>
+                  <td>
+                    <div className="product-cell">
+                      <span className="product-name">{item.productName || item.name || `Product ${item.productId}`}</span>
+                      <span className="product-sku">{item.productSku || item.sku || `SKU-${item.productId}`}</span>
+                    </div>
+                  </td>
+                  <td>{item.category || 'General'}</td>
+                  <td>{item.stockQuantity !== undefined ? item.stockQuantity : item.quantity}</td>
+                  <td>
+                    <span className={`status-badge ${(item.isLowStock || (item.quantity <= item.reorderLevel)) ? 'status-low' : 'status-ok'}`}>
+                      {(item.isLowStock || (item.quantity <= item.reorderLevel)) ? 'Low Stock' : 'Healthy'}
+                    </span>
+                  </td>
+                  <td>${(item.stockValue !== undefined ? item.stockValue : (item.quantity * (item.unitPrice || 0))).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  <td>{item.lastMovementDate || item.updatedAt ? new Date(item.lastMovementDate || item.updatedAt).toLocaleDateString() : 'No data'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderSalesReports = () => (
+    <div className="reports-container">
+      <div className="inventory-stats-row">
+        <div className="inventory-stat-card">
+          <span className="stat-label">Total Transactions</span>
+          <span className="stat-value">{data.salesOrders.length}</span>
+        </div>
+        <div className="inventory-stat-card">
+          <span className="stat-label">Total Volume</span>
+          <span className="stat-value">${data.salesOrders.reduce((sum, s) => sum + (s.totalAmount || 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+        </div>
+        <div className="inventory-stat-card">
+          <span className="stat-label">Avg Order Value</span>
+          <span className="stat-value">
+            ${(data.salesOrders.length > 0
+              ? data.salesOrders.reduce((sum, s) => sum + (s.totalAmount || 0), 0) / data.salesOrders.length
+              : 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </span>
+        </div>
+      </div>
+
+      <div className="report-table-card">
+        <div className="table-header">
+          <h3>Sales History</h3>
+          <p>Detailed breakdown of recent sales transactions</p>
+        </div>
+        <div className="table-responsive">
+          <table className="analytics-table">
+            <thead>
+              <tr>
+                <th>Order ID</th>
+                <th>Status</th>
+                <th>Items</th>
+                <th>Amount</th>
+                <th>Customer</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.salesOrders.map((order) => (
+                <tr key={order.id}>
+                  <td><span className="order-id">#{order.orderId || order.id}</span></td>
+                  <td>
+                    <span className={`status-badge status-${(order.orderStatus || order.status || 'pending').toLowerCase()}`}>
+                      {order.orderStatus || order.status || 'Pending'}
+                    </span>
+                  </td>
+                  <td>
+                    <div className="order-items-cell">
+                      <div className="item-count">
+                        {(() => {
+                          const count = order.totalItems !== undefined
+                            ? order.totalItems
+                            : (order.items && Array.isArray(order.items))
+                              ? order.items.reduce((sum, i) => sum + (i.quantity || 0), 0)
+                              : 0;
+                          return `${count} ${count === 1 ? 'item' : 'items'}`;
+                        })()}
+                      </div>
+                      {order.items && Array.isArray(order.items) && (
+                        <div className="product-names-list">
+                          {order.items.slice(0, 3).map((item, idx) => (
+                            <span key={idx} className="product-tag">
+                              {item.product_name || item.productName || `Product #${item.productId}`}
+                            </span>
+                          ))}
+                          {order.items.length > 3 && (
+                            <span className="product-tag-more">+{order.items.length - 3} more</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                  <td className="amount-cell">${(order.totalAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                  <td>{order.customerName || order.customer_name || (order.customerId ? `Customer #${order.customerId}` : 'Walk-in')}</td>
+                  <td>{new Date(order.saleDate || order.createdAt || order.created_at).toLocaleDateString()}</td>
+                </tr>
+              ))}
+              {data.salesOrders.length === 0 && (
+                <tr>
+                  <td colSpan="6" style={{ textAlign: 'center', padding: '2rem', color: '#6b7280' }}>No sales data available</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderAuditLogs = () => (
+    <div className="reports-container">
+      <div className="report-table-card">
+        <div className="table-header">
+          <h3>Activity Feed</h3>
+          <p>Recent administrative and system actions</p>
+        </div>
+        <div className="audit-list">
+          {data.auditLogs.map((log) => (
+            <div key={log.id} className="audit-item">
+              <div className="audit-timestamp">
+                {new Date(log.timestamp || log.createdAt).toLocaleString()}
+              </div>
+              <div className="audit-content">
+                <span className="audit-user">{log.username || `User #${log.userId}`}</span>
+                <span className="audit-action">{log.action}</span>
+                <span className="audit-entity">{log.entity} #{log.entityId}</span>
+              </div>
+              {log.description && <div className="audit-details">{log.description}</div>}
+            </div>
+          ))}
+          {data.auditLogs.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '2rem', color: '#6b7280' }}>No activity logs found</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderPlaceholder = (label) => (
+    <div className="placeholder-card">
+      <div className="placeholder-icon">
+        <FileText size={48} />
+      </div>
+      <h3>{label}</h3>
+      <p>This module is currently being optimized for your business. Check back soon for detailed insights.</p>
+    </div>
+  );
+
+  return (
+    <div className="analytics-page">
+      <div className="analytics-header">
+        <h1 className="analytics-title">Analytics & Reports</h1>
+        <p className="analytics-subtitle">Business intelligence and system metrics</p>
+      </div>
+
+      <nav className="analytics-tabs">
         {tabs.map((tab) => (
           <button
             key={tab.id}
+            className={`analytics-tab ${activeTab === tab.id ? 'active' : ''}`}
             onClick={() => setActiveTab(tab.id)}
-            style={{
-              padding: '0.75rem 1.5rem',
-              backgroundColor: activeTab === tab.id ? '#1f2937' : 'transparent',
-              color: activeTab === tab.id ? 'white' : '#9ca3af',
-              border: 'none',
-              borderBottom: activeTab === tab.id ? '2px solid #3b82f6' : '2px solid transparent',
-              cursor: 'pointer',
-              fontSize: '1rem',
-              fontWeight: '500',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              transition: 'all 0.2s',
-            }}
           >
-            {tab.icon}
-            {tab.label}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              {tab.icon}
+              {tab.label}
+            </div>
           </button>
         ))}
+      </nav>
+
+      <div className="analytics-content">
+        {activeTab === 'dashboard' && renderDashboard()}
+        {activeTab === 'inventory' && renderInventoryReports()}
+        {activeTab === 'sales' && renderSalesReports()}
+        {activeTab === 'audit' && renderAuditLogs()}
       </div>
-
-      {/* Content */}
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: '3rem', color: '#9ca3af' }}>
-          Loading analytics...
-        </div>
-      ) : (
-        <>
-          {/* Dashboard Tab */}
-          {activeTab === 'dashboard' && (
-            <div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
-                <div className="stat-card" style={{ borderLeft: '4px solid #3b82f6' }}>
-                  <div className="stat-title">Total Products</div>
-                  <div className="stat-value">{dashboardData?.totalProducts || 0}</div>
-                  <div className="stat-subtitle">In catalog</div>
-                </div>
-                <div className="stat-card" style={{ borderLeft: '4px solid #10b981' }}>
-                  <div className="stat-title">Total Orders</div>
-                  <div className="stat-value">{dashboardData?.totalOrders || 0}</div>
-                  <div className="stat-subtitle">All time</div>
-                </div>
-                <div className="stat-card" style={{ borderLeft: '4px solid #f59e0b' }}>
-                  <div className="stat-title">Low Stock Items</div>
-                  <div className="stat-value">{dashboardData?.lowStockCount || 0}</div>
-                  <div className="stat-subtitle">Needs attention</div>
-                </div>
-                <div className="stat-card" style={{ borderLeft: '4px solid #8b5cf6' }}>
-                  <div className="stat-title">Total Value</div>
-                  <div className="stat-value">
-                    ${dashboardData?.totalValue ? parseFloat(dashboardData.totalValue).toFixed(2) : '0.00'}
-                  </div>
-                  <div className="stat-subtitle">Inventory value</div>
-                </div>
-              </div>
-
-              <div style={{
-                padding: '2rem',
-                backgroundColor: '#1f2937',
-                borderRadius: '0.5rem',
-                border: '1px solid #374151',
-                textAlign: 'center',
-              }}>
-                <FaChartLine style={{ fontSize: '3rem', color: '#6b7280', marginBottom: '1rem' }} />
-                <h3 style={{ color: '#d1d5db', margin: '0 0 0.5rem 0' }}>Dashboard Overview</h3>
-                <p style={{ color: '#9ca3af', fontSize: '0.875rem' }}>
-                  {dashboardData ? 'Dashboard data loaded successfully' : 'No dashboard data available for this organization'}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Inventory Tab */}
-          {activeTab === 'inventory' && (
-            <div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
-                <div className="stat-card">
-                  <div className="stat-title">Total Items</div>
-                  <div className="stat-value">{inventorySummary?.totalItems || 0}</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-title">Total Quantity</div>
-                  <div className="stat-value">{inventorySummary?.totalQuantity || 0}</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-title">Total Value</div>
-                  <div className="stat-value">
-                    ${inventorySummary?.totalValue ? parseFloat(inventorySummary.totalValue).toFixed(2) : '0.00'}
-                  </div>
-                </div>
-              </div>
-
-              <h3 style={{ marginBottom: '1rem' }}>
-                <FaExclamationTriangle style={{ color: '#f59e0b', marginRight: '0.5rem' }} />
-                Low Stock Items
-              </h3>
-              <div className="table-container">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Product</th>
-                      <th>Current Stock</th>
-                      <th>Min Stock</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {lowStock.length === 0 ? (
-                      <tr>
-                        <td colSpan="4" style={{ textAlign: 'center', padding: '2rem', color: '#9ca3af' }}>
-                          No low stock items
-                        </td>
-                      </tr>
-                    ) : (
-                      lowStock.map((item, index) => (
-                        <tr key={index}>
-                          <td>{item.productName || item.productId}</td>
-                          <td>{item.currentStock || 0}</td>
-                          <td>{item.minStock || 10}</td>
-                          <td>
-                            <span className="badge" style={{ backgroundColor: '#f59e0b' }}>
-                              Low Stock
-                            </span>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* Sales Tab */}
-          {activeTab === 'sales' && (
-            <div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
-                <div className="stat-card">
-                  <div className="stat-title">Total Sales</div>
-                  <div className="stat-value">{salesSummary?.totalSales || 0}</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-title">Total Revenue</div>
-                  <div className="stat-value">
-                    ${salesSummary?.totalRevenue ? parseFloat(salesSummary.totalRevenue).toFixed(2) : '0.00'}
-                  </div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-title">Avg Order Value</div>
-                  <div className="stat-value">
-                    ${salesSummary?.avgOrderValue ? parseFloat(salesSummary.avgOrderValue).toFixed(2) : '0.00'}
-                  </div>
-                </div>
-              </div>
-
-              <div style={{
-                padding: '2rem',
-                backgroundColor: '#1f2937',
-                borderRadius: '0.5rem',
-                border: '1px solid #374151',
-                textAlign: 'center',
-              }}>
-                <FaShoppingCart style={{ fontSize: '3rem', color: '#6b7280', marginBottom: '1rem' }} />
-                <h3 style={{ color: '#d1d5db', margin: '0 0 0.5rem 0' }}>Sales Analytics</h3>
-                <p style={{ color: '#9ca3af', fontSize: '0.875rem' }}>
-                  {salesSummary ? 'Sales data loaded successfully' : 'No sales data available for this organization'}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Audit Logs Tab */}
-          {activeTab === 'audit' && (
-            <div className="table-container">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Timestamp</th>
-                    <th>User</th>
-                    <th>Action</th>
-                    <th>Entity</th>
-                    <th>Details</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {auditLogs.length === 0 ? (
-                    <tr>
-                      <td colSpan="5" style={{ textAlign: 'center', padding: '2rem', color: '#9ca3af' }}>
-                        No audit logs available
-                      </td>
-                    </tr>
-                  ) : (
-                    auditLogs.slice(0, 50).map((log, index) => (
-                      <tr key={index}>
-                        <td>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <FaCalendar style={{ color: '#9ca3af', fontSize: '0.875rem' }} />
-                            <span style={{ fontSize: '0.875rem' }}>
-                              {log.timestamp ? new Date(log.timestamp).toLocaleString() : '-'}
-                            </span>
-                          </div>
-                        </td>
-                        <td>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <FaUser style={{ color: '#3b82f6', fontSize: '0.875rem' }} />
-                            <span>{log.userId || log.username || '-'}</span>
-                          </div>
-                        </td>
-                        <td>
-                          <span className="badge" style={{
-                            backgroundColor: log.action === 'CREATE' ? '#10b981' :
-                                           log.action === 'UPDATE' ? '#3b82f6' :
-                                           log.action === 'DELETE' ? '#ef4444' : '#6b7280'
-                          }}>
-                            {log.action || 'UNKNOWN'}
-                          </span>
-                        </td>
-                        <td>{log.entity || '-'}</td>
-                        <td style={{ fontSize: '0.875rem', color: '#9ca3af' }}>
-                          {log.details || log.description || '-'}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </>
-      )}
     </div>
   );
 };

@@ -99,11 +99,20 @@ public class InventoryService {
         // User request: "explicitly fetch the reorder level from the associated
         // product: dto.setReorderLevel(stock.getProduct().getReorderLevel());"
         // I will fetch from Product Service.
+        // Fetch details from Product Service
         try {
             com.inventory.inventoryservice.dto.ProductDto product = restTemplate.getForObject(
                     PRODUCT_SERVICE_URL + stock.getProductId(), com.inventory.inventoryservice.dto.ProductDto.class);
-            if (product != null && product.getReorderLevel() != null) {
-                dto.setReorderLevel(product.getReorderLevel());
+            if (product != null) {
+                if (product.getReorderLevel() != null) {
+                    dto.setReorderLevel(product.getReorderLevel());
+                } else {
+                    dto.setReorderLevel(stock.getReorderLevel());
+                }
+                dto.setProductName(product.getName());
+                dto.setProductSku(product.getSku());
+                dto.setCategory(product.getCategory());
+                dto.setUnitPrice(product.getPrice());
             } else {
                 dto.setReorderLevel(stock.getReorderLevel());
             }
@@ -283,5 +292,39 @@ public class InventoryService {
 
     public List<InventoryTransaction> getAllTransactions() {
         return transactionRepository.findAll();
+    }
+
+    public long getLowStockCountByOrg(Long orgId) {
+        List<Stock> stocks = stockRepository.findByOrgId(orgId);
+        long count = 0;
+
+        // Cache reorder levels to avoid redundant calls for same product in different
+        // warehouses
+        Map<Long, Integer> productReorderLevels = new HashMap<>();
+
+        for (Stock stock : stocks) {
+            Integer reorderLevel = stock.getReorderLevel();
+
+            if (reorderLevel == null) {
+                if (productReorderLevels.containsKey(stock.getProductId())) {
+                    reorderLevel = productReorderLevels.get(stock.getProductId());
+                } else {
+                    try {
+                        com.inventory.inventoryservice.dto.ProductDto product = restTemplate.getForObject(
+                                PRODUCT_SERVICE_URL + stock.getProductId(),
+                                com.inventory.inventoryservice.dto.ProductDto.class);
+                        reorderLevel = (product != null) ? product.getReorderLevel() : null;
+                        productReorderLevels.put(stock.getProductId(), reorderLevel);
+                    } catch (Exception e) {
+                        log.warn("Failed to fetch reorder level for product {}", stock.getProductId());
+                    }
+                }
+            }
+
+            if (reorderLevel != null && stock.getQuantity() <= reorderLevel) {
+                count++;
+            }
+        }
+        return count;
     }
 }

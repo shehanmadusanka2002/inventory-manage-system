@@ -12,75 +12,76 @@ import java.util.List;
  */
 @Component
 public class WeightedAverageValuationStrategy implements ValuationStrategy {
-    
+
     @Override
     public BigDecimal calculateStockValue(List<InventoryTransaction> transactions, Integer currentQuantity) {
-        if (currentQuantity == null || currentQuantity == 0) {
+        if (currentQuantity == null || currentQuantity == 0 || transactions == null) {
             return BigDecimal.ZERO;
         }
-        
+
         // Calculate weighted average cost
         BigDecimal totalCost = BigDecimal.ZERO;
-        int totalQuantity = 0;
-        
+        int totalInQuantity = 0;
+
         for (InventoryTransaction transaction : transactions) {
-            if ("IN".equals(transaction.getType())) {
-                BigDecimal transactionCost = transaction.getUnitPrice()
-                    .multiply(BigDecimal.valueOf(transaction.getQuantity()));
+            if (InventoryTransaction.TransactionType.IN.equals(transaction.getType())) {
+                BigDecimal unitPrice = transaction.getUnitPrice() != null ? transaction.getUnitPrice()
+                        : BigDecimal.ZERO;
+                int qty = transaction.getQuantity() != null ? transaction.getQuantity() : 0;
+
+                BigDecimal transactionCost = unitPrice.multiply(BigDecimal.valueOf(qty));
                 totalCost = totalCost.add(transactionCost);
-                totalQuantity += transaction.getQuantity();
+                totalInQuantity += qty;
             }
         }
-        
-        if (totalQuantity == 0) {
+
+        if (totalInQuantity == 0) {
             return BigDecimal.ZERO;
         }
-        
+
         // Average cost per unit
         BigDecimal averageCost = totalCost.divide(
-            BigDecimal.valueOf(totalQuantity), 
-            4, 
-            RoundingMode.HALF_UP
-        );
-        
+                BigDecimal.valueOf(totalInQuantity),
+                4,
+                RoundingMode.HALF_UP);
+
         // Total value = average cost * current quantity
         return averageCost.multiply(BigDecimal.valueOf(currentQuantity))
-            .setScale(2, RoundingMode.HALF_UP);
+                .setScale(2, RoundingMode.HALF_UP);
     }
-    
+
     @Override
     public BigDecimal calculateCOGS(List<InventoryTransaction> transactions, Integer quantitySold) {
         if (quantitySold == null || quantitySold == 0) {
             return BigDecimal.ZERO;
         }
-        
+
         // Calculate weighted average cost
         BigDecimal totalCost = BigDecimal.ZERO;
         int totalQuantity = 0;
-        
+
         for (InventoryTransaction transaction : transactions) {
             if ("IN".equals(transaction.getType())) {
                 BigDecimal transactionCost = transaction.getUnitPrice()
-                    .multiply(BigDecimal.valueOf(transaction.getQuantity()));
+                        .multiply(BigDecimal.valueOf(transaction.getQuantity()));
                 totalCost = totalCost.add(transactionCost);
                 totalQuantity += transaction.getQuantity();
             }
         }
-        
+
         if (totalQuantity == 0) {
             return BigDecimal.ZERO;
         }
-        
+
         BigDecimal averageCost = totalCost.divide(
-            BigDecimal.valueOf(totalQuantity), 
-            4, 
-            RoundingMode.HALF_UP
-        );
-        
+                BigDecimal.valueOf(totalQuantity),
+                4,
+                RoundingMode.HALF_UP);
+
         return averageCost.multiply(BigDecimal.valueOf(quantitySold))
-            .setScale(2, RoundingMode.HALF_UP);
+                .setScale(2, RoundingMode.HALF_UP);
     }
-    
+
     @Override
     public String getStrategyName() {
         return "WEIGHTED_AVERAGE";

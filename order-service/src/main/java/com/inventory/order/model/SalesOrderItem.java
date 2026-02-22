@@ -29,4 +29,7 @@ public class SalesOrderItem {
 
     @Column(name = "unit_price", precision = 15, scale = 2)
     private BigDecimal unitPrice;
+
+    @Column(name = "product_name")
+    private String productName;
 }

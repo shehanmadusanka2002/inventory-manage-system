@@ -14,6 +14,10 @@ public class StockResponseDto {
     private Integer reservedQuantity;
     private Long orgId;
     private Integer reorderLevel;
+    private String productName;
+    private String productSku;
+    private String category;
+    private java.math.BigDecimal unitPrice;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

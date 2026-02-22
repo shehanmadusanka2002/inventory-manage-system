@@ -6,4 +6,6 @@ import java.util.List;
 
 public interface SalesOrderRepository extends JpaRepository<SalesOrder, Long> {
     List<SalesOrder> findByOrgId(Long orgId);
+
+    long countByOrgId(Long orgId);
 }
