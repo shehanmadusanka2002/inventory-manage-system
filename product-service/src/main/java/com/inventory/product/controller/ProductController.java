@@ -19,6 +19,11 @@ public class ProductController {
     private final ProductService productService;
     private final ProductRegistrationService productRegistrationService;
 
+    @GetMapping("/organization/{orgId}")
+    public ResponseEntity<List<Product>> getProductsByOrganization(@PathVariable Long orgId) {
+        return ResponseEntity.ok(productService.getProductsByOrg(orgId));
+    }
+
     @GetMapping
     public ResponseEntity<List<Product>> getAllProducts(
             @RequestHeader(value = "X-Org-ID", required = false) Long orgId,

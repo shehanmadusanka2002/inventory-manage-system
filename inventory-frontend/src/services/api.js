@@ -46,6 +46,7 @@ export const authService = {
 
 export const productService = {
   getAll: () => apiClient.get('/api/products'),
+  getByOrganization: (orgId) => apiClient.get(`/api/products/organization/${orgId}`),
   getById: (id) => apiClient.get(`/api/products/${id}`),
   create: (product) => apiClient.post('/api/products', product),
   update: (id, product) => apiClient.put(`/api/products/${id}`, product),
@@ -256,10 +257,19 @@ export const auditService = {
 export const ledgerService = {
   getByProduct: (productId) => apiClient.get(`/api/inventory/ledger/product/${productId}`),
   getByWarehouse: (warehouseId) => apiClient.get(`/api/inventory/ledger/warehouse/${warehouseId}`),
-  getProductValuation: (productId, strategy) => apiClient.get(`/api/inventory/ledger/product/${productId}/valuation?strategy=${strategy || 'FIFO'}`),
-  getWarehouseValuation: (warehouseId, strategy) => apiClient.get(`/api/inventory/ledger/warehouse/${warehouseId}/valuation?strategy=${strategy || 'FIFO'}`),
-  getOldestStock: (productId, warehouseId) => apiClient.get(`/api/inventory/ledger/oldest?productId=${productId}&warehouseId=${warehouseId}`),
-  getNewestStock: (productId, warehouseId) => apiClient.get(`/api/inventory/ledger/newest?productId=${productId}&warehouseId=${warehouseId}`),
+  getByProductAndWarehouse: (productId, warehouseId) =>
+    apiClient.get(`/api/inventory/ledger/product/${productId}/warehouse/${warehouseId}`),
+  getProductValuation: (productId, strategy) =>
+    apiClient.get(`/api/inventory/ledger/product/${productId}/valuation?strategy=${strategy || 'FIFO'}`),
+  getWarehouseValuation: (warehouseId, strategy) =>
+    apiClient.get(`/api/inventory/ledger/warehouse/${warehouseId}/valuation?strategy=${strategy || 'FIFO'}`),
+};
+
+// Valuation Service (inventory-service)
+export const valuationService = {
+  compareMethods: (productId, warehouseId) =>
+    apiClient.get(`/api/inventory/valuation/compare/${productId}/warehouse/${warehouseId}`),
+  getStrategies: () => apiClient.get('/api/inventory/valuation/strategies'),
 };
 
 // Category Service

@@ -21,6 +21,10 @@ public class ProductService {
         return productRepository.findAll();
     }
 
+    public List<Product> getProductsByOrg(Long orgId) {
+        return productRepository.findByOrgId(orgId);
+    }
+
     public List<Product> getProductsByOrgAndIndustry(Long orgId, String industryType) {
         return productRepository.findByOrgIdAndIndustryType(orgId, industryType);
     }

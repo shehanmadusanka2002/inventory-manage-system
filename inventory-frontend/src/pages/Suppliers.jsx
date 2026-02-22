@@ -217,17 +217,17 @@ function Suppliers() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
               <tr>
-                <th style={{ padding: '16px 24px', textAlign: 'left', fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Name</th>
-                <th style={{ padding: '16px 24px', textAlign: 'left', fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Contact Info</th>
-                <th style={{ padding: '16px 24px', textAlign: 'left', fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Created At</th>
-                <th style={{ padding: '16px 24px', textAlign: 'left', fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Actions</th>
+                <th style={{ padding: '16px 24px', textAlign: 'left', fontSize: '13px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Name</th>
+                <th style={{ padding: '16px 24px', textAlign: 'left', fontSize: '13px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Contact Info</th>
+                <th style={{ padding: '16px 24px', textAlign: 'left', fontSize: '13px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Created At</th>
+                <th style={{ padding: '16px 24px', textAlign: 'left', fontSize: '13px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {suppliers.map((supplier, index) => (
                 <tr key={supplier.id} style={{ borderBottom: '1px solid #f1f5f9', background: index % 2 === 0 ? '#fff' : '#fafafa' }}>
                   <td style={{ padding: '16px 24px' }}>
-                    <div style={{ fontWeight: 600, color: '#0f172a', fontSize: '14px' }}>{supplier.name}</div>
+                    <div style={{ fontWeight: 600, color: '#0f172a', fontSize: '16px' }}>{supplier.name}</div>
                   </td>
                   <td style={{ padding: '16px 24px' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -235,10 +235,10 @@ function Suppliers() {
                         if (!value) return null;
                         return (
                           <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#9ca3af' }}>
+                            <span style={{ fontSize: '13px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#9ca3af' }}>
                               {key}:
                             </span>
-                            <span style={{ fontSize: '14px', fontWeight: 500, color: '#1f2937' }}>
+                            <span style={{ fontSize: '15px', fontWeight: 500, color: '#1f2937' }}>
                               {String(value)}
                             </span>
                           </div>
@@ -250,7 +250,7 @@ function Suppliers() {
                       )}
                     </div>
                   </td>
-                  <td style={{ padding: '16px 24px', fontSize: '13px', color: '#64748b' }}>
+                  <td style={{ padding: '16px 24px', fontSize: '14px', color: '#64748b' }}>
                     {supplier.createdAt ? new Date(supplier.createdAt).toLocaleDateString() : '-'}
                   </td>
                   <td style={{ padding: '16px 24px' }}>

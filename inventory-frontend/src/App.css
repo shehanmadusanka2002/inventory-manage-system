@@ -196,7 +196,8 @@ thead {
   background-color: var(--light-bg);
 }
 
-th, td {
+th,
+td {
   padding: 12px 15px;
   text-align: left;
   border-bottom: 1px solid var(--border-color);
@@ -550,7 +551,7 @@ tbody tr:hover {
     gap: 0.5rem;
     padding: 0.5rem;
   }
-  
+
   .tabs button {
     min-width: 100px;
     padding: 0.625rem 1rem;
@@ -563,6 +564,7 @@ tbody tr:hover {
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
